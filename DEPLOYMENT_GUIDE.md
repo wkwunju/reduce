@@ -37,7 +37,7 @@ git init
 git add .
 git commit -m "Initial commit with database support"
 git branch -M main
-git remote add origin YOUR_GITHUB_REPO_URL
+git remote set-url origin link
 git push -u origin main
 ```
 

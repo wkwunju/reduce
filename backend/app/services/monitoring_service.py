@@ -3,14 +3,14 @@ from typing import Dict, Optional
 from sqlalchemy.orm import Session
 from app.services.twitter_service import TwitterService
 from app.services.llm_service import LLMService
-from app.services.email_service import EmailService
+from app.services.sendgrid_service import SendGridService
 from app.services.db_storage import DatabaseStorage
 
 class MonitoringService:
     def __init__(self):
         self.twitter_service = TwitterService()
         self.llm_service = LLMService()
-        self.email_service = EmailService()
+        self.email_service = SendGridService()
     
     def run_job(self, job: Dict, db: Session) -> Dict:
         """

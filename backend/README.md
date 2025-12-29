@@ -27,24 +27,23 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # Optional: GEMINI_MODEL=gemini-2.5-flash (default) or gemini-1.5-flash, gemini-1.5-pro
 # Alternative: OPENAI_API_KEY=your_openai_api_key_here
 
-# Gmail API Configuration (optional - for sending summaries)
-# See GMAIL_SETUP.md for detailed setup instructions
-GMAIL_CREDENTIALS_FILE=credentials.json
-GMAIL_TOKEN_FILE=token.pickle
-FROM_EMAIL=your_email@gmail.com
+# Email Configuration (SendGrid - recommended)
+# Get your API key from: https://app.sendgrid.com/settings/api_keys
+SENDGRID_API_KEY=SG.your_sendgrid_api_key_here
+FROM_EMAIL=kai@ai-productivity.tools
 
 # Server
 HOST=0.0.0.0
 PORT=8000
 ```
 
-4. **Setup Gmail API (optional, for email summaries):**
-   - See **[GMAIL_SETUP.md](./GMAIL_SETUP.md)** for detailed instructions
-   - Quick steps:
-     1. Enable Gmail API in Google Cloud Console
-     2. Download OAuth credentials as `credentials.json`
-     3. Place in backend directory
-     4. First run will open browser for authorization
+4. **Setup Email Service (optional, for email summaries):**
+   - **SendGrid (Recommended):**
+     1. Sign up at https://signup.sendgrid.com/
+     2. Create API Key: Settings → API Keys → Create API Key
+     3. Verify sender email: Settings → Sender Authentication → Single Sender Verification
+     4. Add to `.env`: `SENDGRID_API_KEY` and `FROM_EMAIL`
+   - Free tier: 100 emails/day permanently
 
 5. **Run the server:**
 ```bash
@@ -59,27 +58,31 @@ Once the server is running, visit:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
-## Gmail API Setup
+## Email Setup (SendGrid)
 
-For sending email summaries, this application uses **Gmail API with OAuth 2.0** (more secure than SMTP).
+For sending email summaries, this application uses **SendGrid API** for reliable delivery.
 
-See **[GMAIL_SETUP.md](./GMAIL_SETUP.md)** for complete setup instructions.
-
-Quick overview:
-1. Create a project in Google Cloud Console
-2. Enable Gmail API
-3. Create OAuth 2.0 credentials (Desktop app)
-4. Download credentials.json
-5. First run will open browser for authorization
+### Quick Setup:
+1. **Sign up**: https://signup.sendgrid.com/ (free tier: 100 emails/day)
+2. **Create API Key**: Settings → API Keys → Create API Key
+   - Choose "Restricted Access" → Enable "Mail Send" (Full Access)
+   - Copy the API key (starts with `SG.`)
+3. **Verify Sender**: Settings → Sender Authentication → Single Sender Verification
+   - Add your email (e.g., `kai@ai-productivity.tools`)
+   - Check email and click verification link
+4. **Configure**: Add to `.env`:
+   ```
+   SENDGRID_API_KEY=SG.your_api_key_here
+   FROM_EMAIL=kai@ai-productivity.tools
+   ```
 
 ## Notes
 
 - **Python Version**: Requires Python 3.10+ (tested with Python 3.13)
-- **Storage**: Currently using in-memory storage. Jobs and summaries are stored in memory and will be lost on server restart. Database support will be added in a later stage.
-- **Email**: Optional feature using Gmail API with OAuth 2.0. See GMAIL_SETUP.md for setup.
+- **Database**: Uses PostgreSQL in production (Railway), SQLite for local development
+- **Email**: Optional feature using SendGrid API. Free tier: 100 emails/day.
 - Make sure to get your API keys from:
-  - Twitter API: https://twitterapi.io (get your key from https://twitterapi.io/dashboard)
+  - Twitter API: https://twitterapi.io/dashboard
   - Gemini API: https://makersuite.google.com/app/apikey
-  - OpenAI API: https://platform.openai.com/api-keys
-  - Gmail API: See GMAIL_SETUP.md
+  - SendGrid API: https://app.sendgrid.com/settings/api_keys
 
