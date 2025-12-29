@@ -1,0 +1,9 @@
+# Optional PostgreSQL support
+# Only install this if you plan to use PostgreSQL instead of SQLite
+# Note: For Python 3.13, you may need to install PostgreSQL development libraries first:
+# macOS: brew install postgresql
+# Ubuntu/Debian: sudo apt-get install libpq-dev
+# Then install: pip install psycopg2-binary
+
+psycopg2-binary>=2.9.9
+
