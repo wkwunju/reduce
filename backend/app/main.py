@@ -13,8 +13,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:5173",
-        "https://*.vercel.app"
-    ],  # React dev servers + Vercel
+        "https://reduce-three.vercel.app",  # 添加你的实际 Vercel 域名
+        "https://*.vercel.app"  # 保留通配符作为备用
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
