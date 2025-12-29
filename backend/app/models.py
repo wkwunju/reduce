@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, JSON, ARRAY
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, JSON, ARRAY, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 import uuid
+import enum
 
 try:
     from app.database import Base
@@ -11,13 +12,36 @@ except ImportError:
     from sqlalchemy.ext.declarative import declarative_base
     Base = declarative_base()
 
+class UserStatus(str, enum.Enum):
+    """User account status"""
+    UNVERIFIED = "unverified"  # Email not verified yet
+    ACTIVE = "active"          # Normal active user
+    SUSPENDED = "suspended"    # Account suspended/banned
+
+class VerificationCodeType(str, enum.Enum):
+    """Type of verification code"""
+    EMAIL_VERIFICATION = "email_verification"  # For email activation
+    PASSWORD_RESET = "password_reset"          # For password reset
+    EMAIL_CHANGE = "email_change"              # For changing email
+
+class ExecutionStatus(str, enum.Enum):
+    """Job execution status"""
+    RUNNING = "running"      # Currently executing
+    COMPLETED = "completed"  # Successfully completed
+    FAILED = "failed"        # Failed with error
+
 class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=True)  # Optional display name
+    status = Column(Enum(UserStatus), default=UserStatus.UNVERIFIED, nullable=False)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     
     jobs = relationship("Job", back_populates="user", cascade="all, delete-orphan")
 
@@ -37,16 +61,58 @@ class Job(Base):
     
     user = relationship("User", back_populates="jobs")
     summaries = relationship("Summary", back_populates="job", cascade="all, delete-orphan")
+    executions = relationship("JobExecution", back_populates="job", cascade="all, delete-orphan")
+
+class JobExecution(Base):
+    __tablename__ = "job_executions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(Enum(ExecutionStatus), default=ExecutionStatus.RUNNING, nullable=False)
+    
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    tweets_fetched = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    job = relationship("Job", back_populates="executions")
+    summaries = relationship("Summary", back_populates="execution")
 
 class Summary(Base):
     __tablename__ = "summaries"
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # For scheduled tasks
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True, index=True)
+    execution_id = Column(Integer, ForeignKey("job_executions.id", ondelete="SET NULL"), nullable=True, index=True)
+    
+    # For playground runs
+    is_playground = Column(Boolean, default=False, nullable=False, index=True)
+    x_username = Column(String(255), nullable=True)  # For playground runs
+    topics = Column(JSON, nullable=True)  # For playground runs
+    hours_back = Column(Integer, nullable=True)  # For playground runs
+    
+    # Common fields
     content = Column(Text, nullable=False)
     tweets_count = Column(Integer, default=0)
     raw_data = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     
     job = relationship("Job", back_populates="summaries")
+    execution = relationship("JobExecution", back_populates="summaries")
+
+class VerificationCode(Base):
+    __tablename__ = "verification_codes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), nullable=False, index=True)
+    code = Column(String(6), nullable=False)  # 6-digit code
+    code_type = Column(Enum(VerificationCodeType), nullable=False)
+    used = Column(Boolean, default=False)
+    
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 

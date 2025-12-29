@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import jobs, monitoring
+from app.routers import jobs, monitoring, auth
 from app.scheduler import scheduler
 from app.database import engine
 from app.models import Base
@@ -22,6 +22,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(monitoring.router, prefix="/api/monitoring", tags=["monitoring"])
 

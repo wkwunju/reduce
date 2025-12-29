@@ -46,10 +46,17 @@ class DatabaseStorage:
         job = self.db.query(Job).filter(Job.id == job_id).first()
         return self._job_to_dict(job) if job else None
     
-    def get_all_jobs(self) -> List[Dict]:
-        """Get all jobs"""
-        jobs = self.db.query(Job).all()
+    def get_all_jobs(self, user_id: Optional[int] = None) -> List[Dict]:
+        """Get all jobs, optionally filtered by user_id"""
+        query = self.db.query(Job)
+        if user_id is not None:
+            query = query.filter(Job.user_id == user_id)
+        jobs = query.all()
         return [self._job_to_dict(job) for job in jobs]
+    
+    def get_user_jobs(self, user_id: int) -> List[Dict]:
+        """Get all jobs for a specific user"""
+        return self.get_all_jobs(user_id=user_id)
     
     def update_job(self, job_id: int, **kwargs) -> Optional[Dict]:
         """Update a job"""

@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.services.db_storage import DatabaseStorage
 from app.scheduler import scheduler
+from app.dependencies.auth import get_current_user, get_current_user_optional
+from app.models import User
 
 router = APIRouter()
 
@@ -21,14 +23,19 @@ class JobUpdateRequest(BaseModel):
     email: Optional[str] = None
 
 @router.post("/")
-def create_job(job_request: JobCreateRequest, db: Session = Depends(get_db)):
-    """Create a new monitoring job"""
+def create_job(
+    job_request: JobCreateRequest, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new monitoring job (requires authentication)"""
     storage = DatabaseStorage(db)
     job = storage.create_job(
         x_username=job_request.x_username,
         frequency=job_request.frequency,
         topics=job_request.topics,
-        email=job_request.email
+        email=job_request.email or current_user.email,  # Use user's email if not provided
+        user_id=current_user.id  # Associate job with current user
     )
     
     # Schedule the job automatically
@@ -37,24 +44,49 @@ def create_job(job_request: JobCreateRequest, db: Session = Depends(get_db)):
     return job
 
 @router.get("/")
-def get_all_jobs(db: Session = Depends(get_db)):
-    """Get all jobs"""
+def get_all_jobs(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all jobs for the current user (requires authentication)"""
     storage = DatabaseStorage(db)
-    return storage.get_all_jobs()
+    return storage.get_user_jobs(current_user.id)
 
 @router.get("/{job_id}")
-def get_job(job_id: int, db: Session = Depends(get_db)):
-    """Get a specific job"""
+def get_job(
+    job_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific job (requires authentication and ownership)"""
     storage = DatabaseStorage(db)
     job = storage.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership
+    if job["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="You don't have permission to access this job")
+    
     return job
 
 @router.patch("/{job_id}")
-def update_job(job_id: int, job_update: JobUpdateRequest, db: Session = Depends(get_db)):
-    """Update a monitoring job"""
+def update_job(
+    job_id: int, 
+    job_update: JobUpdateRequest, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a monitoring job (requires authentication and ownership)"""
     storage = DatabaseStorage(db)
+    
+    # Check if job exists and user owns it
+    existing_job = storage.get_job(job_id)
+    if not existing_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if existing_job["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="You don't have permission to update this job")
     
     update_data = {}
     if job_update.frequency is not None:
@@ -80,9 +112,21 @@ def update_job(job_id: int, job_update: JobUpdateRequest, db: Session = Depends(
     return job
 
 @router.delete("/{job_id}")
-def delete_job(job_id: int, db: Session = Depends(get_db)):
-    """Delete a monitoring job"""
+def delete_job(
+    job_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a monitoring job (requires authentication and ownership)"""
     storage = DatabaseStorage(db)
+    
+    # Check if job exists and user owns it
+    existing_job = storage.get_job(job_id)
+    if not existing_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if existing_job["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="You don't have permission to delete this job")
     
     # Unschedule first
     scheduler.unschedule_job(job_id)
@@ -92,12 +136,20 @@ def delete_job(job_id: int, db: Session = Depends(get_db)):
     return {"message": "Job deleted successfully"}
 
 @router.get("/{job_id}/summaries")
-def get_job_summaries(job_id: int, db: Session = Depends(get_db)):
-    """Get all summaries for a job"""
+def get_job_summaries(
+    job_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all summaries for a job (requires authentication and ownership)"""
     storage = DatabaseStorage(db)
     job = storage.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership
+    if job["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="You don't have permission to access this job's summaries")
     
     summaries = storage.get_summaries(job_id)
     return summaries

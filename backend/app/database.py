@@ -12,6 +12,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     print("⚠️  WARNING: DATABASE_URL not set, using SQLite for development")
     DATABASE_URL = "sqlite:///./xtrack.db"
+    SQLALCHEMY_DATABASE_URL = DATABASE_URL
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},
@@ -21,6 +22,8 @@ else:
     # Handle Railway's postgres:// vs postgresql://
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    
+    SQLALCHEMY_DATABASE_URL = DATABASE_URL
     
     # PostgreSQL configuration
     engine = create_engine(

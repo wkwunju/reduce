@@ -201,6 +201,9 @@ curl https://your-backend-url.up.railway.app/health
 
 # Get jobs (should return empty array initially)
 curl https://your-backend-url.up.railway.app/api/jobs/
+
+
+curl https://reduce-production.up.railway.app/api/jobs/
 ```
 
 ### Test Database Connection

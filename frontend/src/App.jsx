@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Plus, Trash2, Play, Clock, Hash, User, TestTube } from 'lucide-react'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import AuthFlow from './components/AuthFlow'
+import Navbar from './components/Navbar'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
-function App() {
+function MainApp({ showAuthModal, setShowAuthModal }) {
+  const { user } = useAuth();
   const [jobs, setJobs] = useState([])
   const [showAddJob, setShowAddJob] = useState(false)
   const [newJob, setNewJob] = useState({
@@ -27,8 +31,10 @@ function App() {
   const [testLoading, setTestLoading] = useState(false)
 
   useEffect(() => {
-    loadJobs()
-  }, [])
+    if (user) {
+      loadJobs()
+    }
+  }, [user])
 
   const loadJobs = async () => {
     try {
@@ -40,6 +46,12 @@ function App() {
   }
 
   const addJob = async () => {
+    if (!user) {
+      alert('Please login or register to create scheduled tasks')
+      setShowAuthModal(true)
+      return
+    }
+
     if (!newJob.x_username.trim()) {
       alert('Please enter an X username')
       return
@@ -57,7 +69,7 @@ function App() {
       setNewJob({ x_username: '', frequency: 'daily', topics: '', email: '' })
       setShowAddJob(false)
     } catch (error) {
-      alert('Error creating job: ' + (error.response?.data?.detail || error.message))
+      alert('Error creating task: ' + (error.response?.data?.detail || error.message))
     }
   }
 
@@ -66,7 +78,7 @@ function App() {
       await axios.delete(`${API_BASE}/jobs/${jobId}`)
       setJobs(jobs.filter(j => j.id !== jobId))
     } catch (error) {
-      alert('Error deleting job: ' + (error.response?.data?.detail || error.message))
+      alert('Error deleting task: ' + (error.response?.data?.detail || error.message))
     }
   }
 
@@ -77,7 +89,7 @@ function App() {
       })
       setJobs(jobs.map(j => j.id === job.id ? response.data : j))
     } catch (error) {
-      alert('Error updating job: ' + (error.response?.data?.detail || error.message))
+      alert('Error updating task: ' + (error.response?.data?.detail || error.message))
     }
   }
 
@@ -87,9 +99,9 @@ function App() {
       const response = await axios.post(`${API_BASE}/monitoring/jobs/${jobId}/run`)
       // Reload summaries to show the new one
       await loadSummaries(jobId)
-      alert('Job completed! Summary generated successfully.')
+      alert('Task completed! Summary generated successfully.')
     } catch (error) {
-      alert('Error running job: ' + (error.response?.data?.detail || error.message))
+      alert('Error running task: ' + (error.response?.data?.detail || error.message))
     } finally {
       setLoading(false)
     }
@@ -169,19 +181,213 @@ function App() {
   ]
 
   return (
-    <div className="app">
-      <div className="header">
-        <h1>XTrack</h1>
-        <p>Monitor X accounts and get AI summaries</p>
+    <>
+      <Navbar onShowAuth={() => setShowAuthModal(true)} />
+      <div className="app">
+        {/* Scheduled Tasks Section */}
+      <div className="jobs-container">
+        <div className="jobs-header">
+          <h2>Scheduled Tasks</h2>
+          <button className="btn-primary" onClick={() => setShowAddJob(!showAddJob)}>
+            <Plus size={20} />
+            Add Task
+          </button>
+        </div>
+
+        {showAddJob && (
+          <div className="card add-job-card">
+            <h3>Add New Scheduled Task</h3>
+            <div className="form-group">
+              <label>
+                <User size={16} />
+                X Username (without @)
+              </label>
+              <input
+                type="text"
+                placeholder="elonmusk"
+                value={newJob.x_username}
+                onChange={(e) => setNewJob({ ...newJob, x_username: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>
+                <Clock size={16} />
+                Frequency
+              </label>
+              <select
+                value={newJob.frequency}
+                onChange={(e) => setNewJob({ ...newJob, frequency: e.target.value })}
+              >
+                {frequencyOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>
+                <Hash size={16} />
+                Topics (comma-separated)
+              </label>
+              <input
+                type="text"
+                placeholder="AI, technology, space"
+                value={newJob.topics}
+                onChange={(e) => setNewJob({ ...newJob, topics: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>
+                📧 Email (optional - to receive summaries)
+              </label>
+              <input
+                type="email"
+                placeholder="your@email.com"
+                value={newJob.email}
+                onChange={(e) => setNewJob({ ...newJob, email: e.target.value })}
+              />
+              <small>If provided, summaries will be automatically sent to this email when the task runs</small>
+            </div>
+            <div className="form-actions">
+              <button className="btn-secondary" onClick={() => setShowAddJob(false)}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={addJob}>
+                Create Task
+              </button>
+            </div>
+          </div>
+        )}
+
+        {jobs.length === 0 ? (
+          <div className="card empty-state">
+            {user ? (
+              <p>No scheduled tasks yet. Create one to get started!</p>
+            ) : (
+              <p>
+                Scheduled tasks allow you to automatically track X accounts.<br />
+                <button 
+                  onClick={() => setShowAuthModal(true)}
+                  style={{
+                    marginTop: '10px',
+                    padding: '10px 20px',
+                    background: '#000',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Login or Register to Create Tasks
+                </button>
+              </p>
+            )}
+          </div>
+        ) : (
+          jobs.map(job => (
+            <div key={job.id} className="card job-card">
+              <div className="job-header">
+                <div className="job-info">
+                  <h3>@{job.x_username}</h3>
+                  <div className="job-meta">
+                    <span className="badge">
+                      <Clock size={14} />
+                      {frequencyOptions.find(o => o.value === job.frequency)?.label}
+                    </span>
+                    {job.topics && job.topics.length > 0 && (
+                      <span className="badge">
+                        <Hash size={14} />
+                        {job.topics.length} topic{job.topics.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    <span className={`status ${job.is_active ? 'active' : 'inactive'}`}>
+                      {job.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+                <div className="job-actions">
+                  <button
+                    className="btn-icon"
+                    onClick={() => runJob(job.id)}
+                    title="Run now"
+                    disabled={loading}
+                  >
+                    <Play size={18} />
+                  </button>
+                  <button
+                    className="btn-icon"
+                    onClick={() => toggleJob(job)}
+                    title={job.is_active ? 'Pause' : 'Resume'}
+                  >
+                    {job.is_active ? '⏸' : '▶'}
+                  </button>
+                  <button
+                    className="btn-icon danger"
+                    onClick={() => deleteJob(job.id)}
+                    title="Delete"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {job.topics && job.topics.length > 0 && (
+                <div className="topics">
+                  <strong>Topics:</strong> {job.topics.join(', ')}
+                </div>
+              )}
+
+              <div className="summaries-section">
+                <button
+                  className="btn-link"
+                  onClick={() => loadSummaries(job.id)}
+                >
+                  View Summaries ({Array.isArray(summaries[job.id]) ? summaries[job.id].length : (summaries[job.id] ? 1 : 0)})
+                </button>
+                    {summaries[job.id] && (
+                      <div className="summaries">
+                        {(Array.isArray(summaries[job.id]) ? summaries[job.id] : [summaries[job.id]])
+                          .filter(s => s)
+                          .map((summary, idx) => (
+                            <div key={summary.id || idx} className="summary-card">
+                              <div className="summary-header">
+                                <span className="summary-date">
+                                  {new Date(summary.created_at).toLocaleString()}
+                                </span>
+                                <button
+                                  className="btn-icon"
+                                  onClick={() => sendSummaryEmail(job.id, summary.id, job.email)}
+                                  title="Send via email"
+                                  disabled={loading}
+                                >
+                                  📧
+                                </button>
+                              </div>
+                              <div className="summary-content">
+                                {summary.content}
+                              </div>
+                              {summary.raw_data?.count && (
+                                <div className="summary-stats">
+                                  Analyzed {summary.raw_data.count} tweet{summary.raw_data.count !== 1 ? 's' : ''}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* Test Section */}
+      {/* Test Section - Playground */}
       <div className="test-container">
         <div className="jobs-header">
-          <h2>Quick Test</h2>
+          <h2>Playground</h2>
           <button className="btn-primary" onClick={() => setShowTest(!showTest)}>
-            <TestTube size={20} />
-            {showTest ? 'Hide Test' : 'Show Test'}
+            {showTest ? 'Hide' : 'Play'}
           </button>
         </div>
 
@@ -302,183 +508,96 @@ function App() {
           </div>
         )}
       </div>
-
-      <div className="jobs-container">
-        <div className="jobs-header">
-          <h2>Monitoring Jobs</h2>
-          <button className="btn-primary" onClick={() => setShowAddJob(!showAddJob)}>
-            <Plus size={20} />
-            Add Job
-          </button>
-        </div>
-
-        {showAddJob && (
-          <div className="card add-job-card">
-            <h3>Add New Monitoring Job</h3>
-            <div className="form-group">
-              <label>
-                <User size={16} />
-                X Username (without @)
-              </label>
-              <input
-                type="text"
-                placeholder="elonmusk"
-                value={newJob.x_username}
-                onChange={(e) => setNewJob({ ...newJob, x_username: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>
-                <Clock size={16} />
-                Frequency
-              </label>
-              <select
-                value={newJob.frequency}
-                onChange={(e) => setNewJob({ ...newJob, frequency: e.target.value })}
-              >
-                {frequencyOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>
-                <Hash size={16} />
-                Topics (comma-separated)
-              </label>
-              <input
-                type="text"
-                placeholder="AI, technology, space"
-                value={newJob.topics}
-                onChange={(e) => setNewJob({ ...newJob, topics: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>
-                📧 Email (optional - to receive summaries)
-              </label>
-              <input
-                type="email"
-                placeholder="your@email.com"
-                value={newJob.email}
-                onChange={(e) => setNewJob({ ...newJob, email: e.target.value })}
-              />
-              <small>If provided, summaries will be automatically sent to this email when the job runs</small>
-            </div>
-            <div className="form-actions">
-              <button className="btn-secondary" onClick={() => setShowAddJob(false)}>
-                Cancel
-              </button>
-              <button className="btn-primary" onClick={addJob}>
-                Create Job
-              </button>
-            </div>
-          </div>
-        )}
-
-        {jobs.length === 0 ? (
-          <div className="card empty-state">
-            <p>No monitoring jobs yet. Create one to get started!</p>
-          </div>
-        ) : (
-          jobs.map(job => (
-            <div key={job.id} className="card job-card">
-              <div className="job-header">
-                <div className="job-info">
-                  <h3>@{job.x_username}</h3>
-                  <div className="job-meta">
-                    <span className="badge">
-                      <Clock size={14} />
-                      {frequencyOptions.find(o => o.value === job.frequency)?.label}
-                    </span>
-                    {job.topics && job.topics.length > 0 && (
-                      <span className="badge">
-                        <Hash size={14} />
-                        {job.topics.length} topic{job.topics.length > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    <span className={`status ${job.is_active ? 'active' : 'inactive'}`}>
-                      {job.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-                <div className="job-actions">
-                  <button
-                    className="btn-icon"
-                    onClick={() => runJob(job.id)}
-                    title="Run now"
-                    disabled={loading}
-                  >
-                    <Play size={18} />
-                  </button>
-                  <button
-                    className="btn-icon"
-                    onClick={() => toggleJob(job)}
-                    title={job.is_active ? 'Pause' : 'Resume'}
-                  >
-                    {job.is_active ? '⏸' : '▶'}
-                  </button>
-                  <button
-                    className="btn-icon danger"
-                    onClick={() => deleteJob(job.id)}
-                    title="Delete"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-
-              {job.topics && job.topics.length > 0 && (
-                <div className="topics">
-                  <strong>Topics:</strong> {job.topics.join(', ')}
-                </div>
-              )}
-
-              <div className="summaries-section">
-                <button
-                  className="btn-link"
-                  onClick={() => loadSummaries(job.id)}
-                >
-                  View Summaries ({Array.isArray(summaries[job.id]) ? summaries[job.id].length : (summaries[job.id] ? 1 : 0)})
-                </button>
-                    {summaries[job.id] && (
-                      <div className="summaries">
-                        {(Array.isArray(summaries[job.id]) ? summaries[job.id] : [summaries[job.id]])
-                          .filter(s => s)
-                          .map((summary, idx) => (
-                            <div key={summary.id || idx} className="summary-card">
-                              <div className="summary-header">
-                                <span className="summary-date">
-                                  {new Date(summary.created_at).toLocaleString()}
-                                </span>
-                                <button
-                                  className="btn-icon"
-                                  onClick={() => sendSummaryEmail(job.id, summary.id, job.email)}
-                                  title="Send via email"
-                                  disabled={loading}
-                                >
-                                  📧
-                                </button>
-                              </div>
-                              <div className="summary-content">
-                                {summary.content}
-                              </div>
-                              {summary.raw_data?.count && (
-                                <div className="summary-stats">
-                                  Analyzed {summary.raw_data.count} tweet{summary.raw_data.count !== 1 ? 's' : ''}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
     </div>
+    </>
   )
+}
+
+function AppContent() {
+  const { user, loading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#ffffff'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            border: '3px solid #f3f3f3',
+            borderTop: '3px solid #000',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px'
+          }}></div>
+          <p style={{ color: '#666' }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <MainApp showAuthModal={showAuthModal} setShowAuthModal={setShowAuthModal} />
+      {showAuthModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '8px',
+            padding: '0',
+            maxWidth: '420px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setShowAuthModal(false)}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#666',
+                zIndex: 10
+              }}
+            >
+              ×
+            </button>
+            <AuthFlow onSuccess={() => setShowAuthModal(false)} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 }
 
 export default App
