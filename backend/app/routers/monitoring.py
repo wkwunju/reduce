@@ -8,7 +8,7 @@ from app.services.db_storage import DatabaseStorage
 from app.services.monitoring_service import MonitoringService
 from app.services.twitter_service import TwitterService
 from app.services.llm_service import LLMService
-from app.services.email_service import EmailService
+from app.services.sendgrid_service import SendGridService
 
 router = APIRouter()
 monitoring_service = MonitoringService()
@@ -67,7 +67,7 @@ def test_monitoring(test_request: TestRequest):
         email_sent = False
         if test_request.email:
             print(f"[API ENDPOINT] Step 4: Sending email to {test_request.email}...")
-            email_service = EmailService()
+            email_service = SendGridService()
             email_sent = email_service.send_summary_email(
                 to_email=test_request.email,
                 x_username=test_request.x_username,
