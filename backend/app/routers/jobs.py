@@ -154,3 +154,20 @@ def get_job_summaries(
     summaries = storage.get_summaries(job_id)
     return summaries
 
+@router.get("/{job_id}/executions")
+def get_job_executions(
+    job_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all executions for a job (requires authentication and ownership)"""
+    storage = DatabaseStorage(db)
+    job = storage.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job["user_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="You don't have permission to access this job's executions")
+    
+    executions = storage.get_executions(job_id)
+    return executions

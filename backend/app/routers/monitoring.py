@@ -60,7 +60,14 @@ def test_monitoring(test_request: TestRequest):
         # Generate AI summary with topic emphasis
         provider_name = llm_service.provider if hasattr(llm_service, 'provider') else 'LLM'
         print(f"[API ENDPOINT] Step 3: Generating AI summary with {provider_name} (emphasizing topics: {test_request.topics})...")
-        summary_text = llm_service.summarize_tweets(tweets, test_request.topics)
+        time_range = f"last {test_request.hours_back} hours"
+        summary_result = llm_service.summarize_tweets(
+            tweets,
+            test_request.topics,
+            x_username=test_request.x_username,
+            time_range=time_range
+        )
+        summary_text = summary_result.get("summary", "")
         print(f"[API ENDPOINT] ✅ Step 3 complete: Summary generated ({len(summary_text)} characters)")
         
         # Send email if provided

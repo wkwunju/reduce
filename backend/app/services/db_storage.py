@@ -2,7 +2,7 @@
 Database storage service for jobs and summaries
 """
 from sqlalchemy.orm import Session
-from app.models import User, Job, Summary
+from app.models import User, Job, Summary, JobExecution
 from typing import List, Optional, Dict
 from datetime import datetime
 import uuid
@@ -83,15 +83,26 @@ class DatabaseStorage:
         return False
     
     # Summary operations
-    def add_summary(self, job_id: int, content: str, raw_data: Dict) -> Dict:
+    def add_summary(
+        self,
+        job_id: int,
+        content: str,
+        raw_data: Dict,
+        execution_id: Optional[int] = None,
+        input_tokens: int = 0,
+        output_tokens: int = 0
+    ) -> Dict:
         """Add a summary for a job"""
         summary = Summary(
             id=str(uuid.uuid4()),
             job_id=job_id,
+            execution_id=execution_id,
             content=content,
             tweets_count=raw_data.get("count", 0),
             raw_data=raw_data
         )
+        summary.input_tokens = input_tokens
+        summary.output_tokens = output_tokens
         self.db.add(summary)
         
         # Update job's last_run
@@ -111,6 +122,15 @@ class DatabaseStorage:
             .limit(limit)\
             .all()
         return [self._summary_to_dict(s) for s in summaries]
+
+    def get_executions(self, job_id: int, limit: int = 50) -> List[Dict]:
+        """Get all executions for a job"""
+        executions = self.db.query(JobExecution)\
+            .filter(JobExecution.job_id == job_id)\
+            .order_by(JobExecution.created_at.desc())\
+            .limit(limit)\
+            .all()
+        return [self._execution_to_dict(e) for e in executions]
     
     # Helper methods
     def _job_to_dict(self, job: Job) -> Dict:
@@ -133,9 +153,24 @@ class DatabaseStorage:
         return {
             "id": str(summary.id),
             "job_id": summary.job_id,
+            "execution_id": summary.execution_id,
             "content": summary.content,
             "tweets_count": summary.tweets_count,
             "raw_data": summary.raw_data,
+            "input_tokens": summary.input_tokens,
+            "output_tokens": summary.output_tokens,
             "created_at": summary.created_at.isoformat() if summary.created_at else None
         }
 
+    def _execution_to_dict(self, execution: JobExecution) -> Dict:
+        """Convert JobExecution model to dict"""
+        return {
+            "id": execution.id,
+            "job_id": execution.job_id,
+            "status": execution.status.value if execution.status else None,
+            "started_at": execution.started_at.isoformat() if execution.started_at else None,
+            "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
+            "tweets_fetched": execution.tweets_fetched,
+            "error_message": execution.error_message,
+            "created_at": execution.created_at.isoformat() if execution.created_at else None
+        }

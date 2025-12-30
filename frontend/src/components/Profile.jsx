@@ -24,9 +24,9 @@ export default function Profile({ onClose }) {
     try {
       const response = await axios.put(`${API_BASE}/auth/profile`, { name });
       updateUser(response.data);
-      setSuccess('昵称更新成功！');
+      setSuccess('Profile updated successfully.');
     } catch (err) {
-      setError(err.response?.data?.detail || '更新失败');
+      setError(err.response?.data?.detail || 'Update failed.');
     } finally {
       setLoading(false);
     }
@@ -38,12 +38,12 @@ export default function Profile({ onClose }) {
     setSuccess('');
 
     if (newPassword !== confirmPassword) {
-      setError('两次输入的Password不一致');
+      setError('Passwords do not match.');
       return;
     }
 
     if (newPassword.length < 8) {
-      setError('Password至少需要8个字符');
+      setError('Password must be at least 8 characters.');
       return;
     }
 
@@ -54,12 +54,12 @@ export default function Profile({ onClose }) {
         old_password: oldPassword,
         new_password: newPassword
       });
-      setSuccess('Password修改成功！');
+      setSuccess('Password updated successfully.');
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      setError(err.response?.data?.detail || '修改失败');
+      setError(err.response?.data?.detail || 'Update failed.');
     } finally {
       setLoading(false);
     }
@@ -128,7 +128,7 @@ export default function Profile({ onClose }) {
                 cursor: 'pointer'
               }}
             >
-              {tab === 'info' ? '基本信息' : '修改Password'}
+              {tab === 'info' ? 'Profile Info' : 'Change Password'}
             </button>
           ))}
         </div>
@@ -197,7 +197,7 @@ export default function Profile({ onClose }) {
                   fontSize: '14px',
                   fontWeight: '500'
                 }}>
-                  昵称
+                  Display Name
                 </label>
                 <input
                   type="text"
@@ -211,7 +211,7 @@ export default function Profile({ onClose }) {
                     fontSize: '14px',
                     boxSizing: 'border-box'
                   }}
-                  placeholder="输入您的昵称（Optional）"
+                  placeholder="Enter display name (optional)"
                 />
               </div>
 
@@ -222,7 +222,7 @@ export default function Profile({ onClose }) {
                   color: '#666',
                   fontSize: '14px'
                 }}>
-                  Register时间
+                  Registration Time
                 </label>
                 <input
                   type="text"
@@ -256,7 +256,7 @@ export default function Profile({ onClose }) {
                   opacity: loading ? 0.7 : 1
                 }}
               >
-                {loading ? 'Save中...' : 'Save修改'}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </form>
           )}
@@ -271,7 +271,7 @@ export default function Profile({ onClose }) {
                   fontSize: '14px',
                   fontWeight: '500'
                 }}>
-                  原Password
+                  Current Password
                 </label>
                 <input
                   type="password"
@@ -286,7 +286,7 @@ export default function Profile({ onClose }) {
                     fontSize: '14px',
                     boxSizing: 'border-box'
                   }}
-                  placeholder="输入当前Password"
+                  placeholder="Enter current password"
                 />
               </div>
 
@@ -298,7 +298,7 @@ export default function Profile({ onClose }) {
                   fontSize: '14px',
                   fontWeight: '500'
                 }}>
-                  新Password
+                  New Password
                 </label>
                 <input
                   type="password"
@@ -313,7 +313,7 @@ export default function Profile({ onClose }) {
                     fontSize: '14px',
                     boxSizing: 'border-box'
                   }}
-                  placeholder="至少8位，包含大小写字母、数字和特殊字符"
+                  placeholder="At least 8 characters"
                 />
               </div>
 
@@ -325,7 +325,7 @@ export default function Profile({ onClose }) {
                   fontSize: '14px',
                   fontWeight: '500'
                 }}>
-                  确认新Password
+                  Confirm New Password
                 </label>
                 <input
                   type="password"
@@ -340,7 +340,7 @@ export default function Profile({ onClose }) {
                     fontSize: '14px',
                     boxSizing: 'border-box'
                   }}
-                  placeholder="再次输入新Password"
+                  placeholder="Re-enter new password"
                 />
               </div>
 
@@ -360,7 +360,7 @@ export default function Profile({ onClose }) {
                   opacity: loading ? 0.7 : 1
                 }}
               >
-                {loading ? 'Changing...' : '修改Password'}
+                {loading ? 'Changing...' : 'Change Password'}
               </button>
             </form>
           )}
@@ -384,11 +384,10 @@ export default function Profile({ onClose }) {
               cursor: 'pointer'
             }}
           >
-            登出账号
+            Sign out
           </button>
         </div>
       </div>
     </div>
   );
 }
-

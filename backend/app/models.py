@@ -99,6 +99,8 @@ class Summary(Base):
     content = Column(Text, nullable=False)
     tweets_count = Column(Integer, default=0)
     raw_data = Column(JSON, nullable=True)
+    input_tokens = Column(Integer, default=0)
+    output_tokens = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     
     job = relationship("Job", back_populates="summaries")
@@ -115,4 +117,3 @@ class VerificationCode(Base):
     
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-

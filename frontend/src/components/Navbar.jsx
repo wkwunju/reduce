@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Profile from './Profile';
 
-export default function Navbar({ onShowAuth }) {
+export default function Navbar({ onShowAuth, onToggleMenu }) {
   const { user } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -10,31 +11,42 @@ export default function Navbar({ onShowAuth }) {
   return (
     <>
       <nav style={{
-        background: '#fff',
-        borderBottom: '1px solid #e0e0e0',
-        padding: '16px 24px',
+        background: '#f8f8f8',
+        padding: '12px 32px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
         <div>
           <div style={{
-            fontSize: '18px',
+            fontSize: '20px',
             fontWeight: '600',
-            color: '#000',
-            marginBottom: '4px'
+            color: '#1a1a1a',
+            letterSpacing: '-0.02em'
           }}>
             XTrack
           </div>
-          <div style={{
-            fontSize: '13px',
-            color: '#666'
-          }}>
-            Track X accounts and get AI summaries
-          </div>
         </div>
 
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {onToggleMenu && (
+            <button
+              className="mobile-menu-button"
+              onClick={onToggleMenu}
+              aria-label="Toggle menu"
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                padding: '6px',
+                cursor: 'pointer',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Menu size={18} />
+            </button>
+          )}
           {user ? (
             <>
               <button

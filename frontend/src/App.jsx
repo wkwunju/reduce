@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Plus, Trash2, Play, Clock, Hash, User, TestTube } from 'lucide-react'
+import { Plus, Trash2, Zap, Clock, Hash, User, TestTube, Mail } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AuthFlow from './components/AuthFlow'
 import Navbar from './components/Navbar'
@@ -19,8 +19,8 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
     email: ''
   })
   const [summaries, setSummaries] = useState({})
+  const [executions, setExecutions] = useState({})
   const [loading, setLoading] = useState(false)
-  const [showTest, setShowTest] = useState(false)
   const [testData, setTestData] = useState({
     x_username: '',
     hours_back: 24,
@@ -29,12 +29,21 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
   })
   const [testResult, setTestResult] = useState(null)
   const [testLoading, setTestLoading] = useState(false)
+  const [activeView, setActiveView] = useState('playground') // 'playground' or 'tasks'
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [expandedExecutions, setExpandedExecutions] = useState({})
 
   useEffect(() => {
     if (user) {
       loadJobs()
     }
   }, [user])
+
+  useEffect(() => {
+    if (jobs.length > 0) {
+      preloadExecutionCounts(jobs)
+    }
+  }, [jobs])
 
   const loadJobs = async () => {
     try {
@@ -97,8 +106,7 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
     setLoading(true)
     try {
       const response = await axios.post(`${API_BASE}/monitoring/jobs/${jobId}/run`)
-      // Reload summaries to show the new one
-      await loadSummaries(jobId)
+      await loadExecutions(jobId)
       alert('Task completed! Summary generated successfully.')
     } catch (error) {
       alert('Error running task: ' + (error.response?.data?.detail || error.message))
@@ -113,6 +121,78 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
       setSummaries({ ...summaries, [jobId]: response.data })
     } catch (error) {
       console.error('Error loading summaries:', error)
+    }
+  }
+
+  const loadExecutions = async (jobId) => {
+    try {
+      const [executionsResponse, summariesResponse] = await Promise.all([
+        axios.get(`${API_BASE}/jobs/${jobId}/executions`),
+        axios.get(`${API_BASE}/jobs/${jobId}/summaries`)
+      ])
+      setExecutions((prev) => ({ ...prev, [jobId]: executionsResponse.data }))
+      setSummaries((prev) => ({ ...prev, [jobId]: summariesResponse.data }))
+    } catch (error) {
+      console.error('Error loading executions:', error)
+    }
+  }
+
+  const preloadExecutionCounts = async (jobsList) => {
+    try {
+      const responses = await Promise.all(
+        jobsList.map(job => Promise.all([
+          axios.get(`${API_BASE}/jobs/${job.id}/executions`),
+          axios.get(`${API_BASE}/jobs/${job.id}/summaries`)
+        ]))
+      )
+      setExecutions((prev) => {
+        const nextExecutions = { ...prev }
+        responses.forEach((responsePair, index) => {
+          nextExecutions[jobsList[index].id] = responsePair[0].data
+        })
+        return nextExecutions
+      })
+      setSummaries((prev) => {
+        const nextSummaries = { ...prev }
+        responses.forEach((responsePair, index) => {
+          nextSummaries[jobsList[index].id] = responsePair[1].data
+        })
+        return nextSummaries
+      })
+    } catch (error) {
+      console.error('Error preloading execution counts:', error)
+    }
+  }
+
+  const toggleExecutions = async (jobId) => {
+    const isExpanded = !!expandedExecutions[jobId]
+    if (isExpanded) {
+      setExpandedExecutions({ ...expandedExecutions, [jobId]: false })
+      return
+    }
+
+    setExpandedExecutions({ ...expandedExecutions, [jobId]: true })
+    if (!summaries[jobId]) {
+      await loadExecutions(jobId)
+    }
+  }
+
+  const getJobStats = (jobId) => {
+    const jobExecutions = Array.isArray(executions[jobId]) ? executions[jobId] : []
+    const jobSummaries = Array.isArray(summaries[jobId]) ? summaries[jobId] : []
+    const inputTokens = jobSummaries.reduce((total, summary) => total + (summary.input_tokens || 0), 0)
+    const outputTokens = jobSummaries.reduce((total, summary) => total + (summary.output_tokens || 0), 0)
+    const tweetsAnalyzed = jobSummaries.reduce((total, summary) => {
+      if (summary.raw_data && typeof summary.raw_data.count === 'number') {
+        return total + summary.raw_data.count
+      }
+      return total + (summary.tweets_count || 0)
+    }, 0)
+    return {
+      inputTokens,
+      outputTokens,
+      tweetsAnalyzed,
+      runCount: jobExecutions.length
     }
   }
 
@@ -182,333 +262,383 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
 
   return (
     <>
-      <Navbar onShowAuth={() => setShowAuthModal(true)} />
-      <div className="app">
-        {/* Scheduled Tasks Section */}
-      <div className="jobs-container">
-        <div className="jobs-header">
-          <h2>Scheduled Tasks</h2>
-          <button className="btn-primary" onClick={() => setShowAddJob(!showAddJob)}>
-            <Plus size={20} />
-            Add Task
+      <Navbar
+        onShowAuth={() => setShowAuthModal(true)}
+        onToggleMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+      />
+      <div className="app-layout">
+        {/* Left Sidebar */}
+        {mobileMenuOpen && <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)} />}
+        <div className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
+          <button 
+            className={`sidebar-item ${activeView === 'playground' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveView('playground')
+              setMobileMenuOpen(false)
+            }}
+          >
+            <TestTube size={20} />
+            <span>Playground</span>
+          </button>
+          <button 
+            className={`sidebar-item ${activeView === 'tasks' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveView('tasks')
+              setMobileMenuOpen(false)
+            }}
+          >
+            <Clock size={20} />
+            <span>Agentic Tasks</span>
           </button>
         </div>
 
-        {showAddJob && (
-          <div className="card add-job-card">
-            <h3>Add New Scheduled Task</h3>
-            <div className="form-group">
-              <label>
-                <User size={16} />
-                X Username (without @)
-              </label>
-              <input
-                type="text"
-                placeholder="elonmusk"
-                value={newJob.x_username}
-                onChange={(e) => setNewJob({ ...newJob, x_username: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>
-                <Clock size={16} />
-                Frequency
-              </label>
-              <select
-                value={newJob.frequency}
-                onChange={(e) => setNewJob({ ...newJob, frequency: e.target.value })}
-              >
-                {frequencyOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>
-                <Hash size={16} />
-                Topics (comma-separated)
-              </label>
-              <input
-                type="text"
-                placeholder="AI, technology, space"
-                value={newJob.topics}
-                onChange={(e) => setNewJob({ ...newJob, topics: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>
-                📧 Email (optional - to receive summaries)
-              </label>
-              <input
-                type="email"
-                placeholder="your@email.com"
-                value={newJob.email}
-                onChange={(e) => setNewJob({ ...newJob, email: e.target.value })}
-              />
-              <small>If provided, summaries will be automatically sent to this email when the task runs</small>
-            </div>
-            <div className="form-actions">
-              <button className="btn-secondary" onClick={() => setShowAddJob(false)}>
-                Cancel
-              </button>
-              <button className="btn-primary" onClick={addJob}>
-                Create Task
-              </button>
-            </div>
-          </div>
-        )}
-
-        {jobs.length === 0 ? (
-          <div className="card empty-state">
-            {user ? (
-              <p>No scheduled tasks yet. Create one to get started!</p>
-            ) : (
-              <p>
-                Scheduled tasks allow you to automatically track X accounts.<br />
-                <button 
-                  onClick={() => setShowAuthModal(true)}
-                  style={{
-                    marginTop: '10px',
-                    padding: '10px 20px',
-                    background: '#000',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}
-                >
-                  Login or Register to Create Tasks
-                </button>
-              </p>
-            )}
-          </div>
-        ) : (
-          jobs.map(job => (
-            <div key={job.id} className="card job-card">
-              <div className="job-header">
-                <div className="job-info">
-                  <h3>@{job.x_username}</h3>
-                  <div className="job-meta">
-                    <span className="badge">
-                      <Clock size={14} />
-                      {frequencyOptions.find(o => o.value === job.frequency)?.label}
-                    </span>
-                    {job.topics && job.topics.length > 0 && (
-                      <span className="badge">
-                        <Hash size={14} />
-                        {job.topics.length} topic{job.topics.length > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    <span className={`status ${job.is_active ? 'active' : 'inactive'}`}>
-                      {job.is_active ? 'Active' : 'Inactive'}
-                    </span>
+        {/* Main Content Area */}
+        <div className="main-content">
+          <div className="main-content-inner">
+            {activeView === 'tasks' && (
+              <div className="jobs-container">
+                {(jobs.length > 0 || showAddJob) && (
+                  <div className="jobs-header">
+                    <h2>Agentic Tasks</h2>
+                    <button className="btn-primary" onClick={() => setShowAddJob(!showAddJob)}>
+                      <Plus size={18} />
+                      Add Task
+                    </button>
                   </div>
-                </div>
-                <div className="job-actions">
+                )}
+
+                {showAddJob && (
+                  <div className="card add-job-card">
+                    <h3>Add New Scheduled Task</h3>
+                    <div className="form-group">
+                      <label>
+                        <User size={16} />
+                        X Username (without @)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="elonmusk"
+                        value={newJob.x_username}
+                        onChange={(e) => setNewJob({ ...newJob, x_username: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>
+                        <Clock size={16} />
+                        Frequency
+                      </label>
+                      <select
+                        value={newJob.frequency}
+                        onChange={(e) => setNewJob({ ...newJob, frequency: e.target.value })}
+                      >
+                        {frequencyOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>
+                        <Hash size={16} />
+                        Topics (comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="AI, technology, space"
+                        value={newJob.topics}
+                        onChange={(e) => setNewJob({ ...newJob, topics: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+              <label>
+                <Mail size={16} />
+                Email (optional - to receive summaries)
+              </label>
+                      <input
+                        type="email"
+                        placeholder="your@email.com"
+                        value={newJob.email}
+                        onChange={(e) => setNewJob({ ...newJob, email: e.target.value })}
+                      />
+                      <small>If provided, summaries will be automatically sent to this email when the task runs</small>
+                    </div>
+                    <div className="form-actions">
+                      <button className="btn-secondary" onClick={() => setShowAddJob(false)}>
+                        Cancel
+                      </button>
+                      <button className="btn-primary" onClick={addJob}>
+                        Create Task
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {jobs.length === 0 && !showAddJob ? (
+                  <div className="empty-state-centered">
+                    <div className="empty-state-icon">
+                      <Clock size={32} />
+                    </div>
+                    {user ? (
+                      <>
+                        <h3>Create your first scheduled task</h3>
+                        <p>Automatically monitor X accounts and receive AI summaries</p>
+                        <button className="btn-primary" onClick={() => setShowAddJob(true)}>
+                          <Plus size={18} />
+                          Add Task
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <h3>Agentic Tasks</h3>
+                        <p>Automatically track X accounts and get AI summaries delivered on schedule</p>
+                        <button className="btn-primary" onClick={() => setShowAuthModal(true)}>
+                          Login or Register to Create Tasks
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  jobs.map(job => (
+                    <div key={job.id} className="card job-card">
+                      <div className="job-header">
+                        <div className="job-info">
+                          <h3>@{job.x_username}</h3>
+                          <div className="job-meta">
+                            <span className="badge">
+                              <Clock size={14} />
+                              {frequencyOptions.find(o => o.value === job.frequency)?.label}
+                            </span>
+                            {job.topics && job.topics.length > 0 && (
+                              <span className="badge">
+                                <Hash size={14} />
+                                {job.topics.length} topic{job.topics.length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                            <span className={`status ${job.is_active ? 'active' : 'inactive'}`}>
+                              {job.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="job-actions">
                   <button
                     className="btn-icon"
                     onClick={() => runJob(job.id)}
                     title="Run now"
                     disabled={loading}
                   >
-                    <Play size={18} />
+                    <Zap size={18} />
                   </button>
-                  <button
-                    className="btn-icon"
-                    onClick={() => toggleJob(job)}
-                    title={job.is_active ? 'Pause' : 'Resume'}
-                  >
-                    {job.is_active ? '⏸' : '▶'}
-                  </button>
-                  <button
-                    className="btn-icon danger"
-                    onClick={() => deleteJob(job.id)}
-                    title="Delete"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-
-              {job.topics && job.topics.length > 0 && (
-                <div className="topics">
-                  <strong>Topics:</strong> {job.topics.join(', ')}
-                </div>
-              )}
-
-              <div className="summaries-section">
-                <button
-                  className="btn-link"
-                  onClick={() => loadSummaries(job.id)}
-                >
-                  View Summaries ({Array.isArray(summaries[job.id]) ? summaries[job.id].length : (summaries[job.id] ? 1 : 0)})
-                </button>
-                    {summaries[job.id] && (
-                      <div className="summaries">
-                        {(Array.isArray(summaries[job.id]) ? summaries[job.id] : [summaries[job.id]])
-                          .filter(s => s)
-                          .map((summary, idx) => (
-                            <div key={summary.id || idx} className="summary-card">
-                              <div className="summary-header">
-                                <span className="summary-date">
-                                  {new Date(summary.created_at).toLocaleString()}
-                                </span>
-                                <button
-                                  className="btn-icon"
-                                  onClick={() => sendSummaryEmail(job.id, summary.id, job.email)}
-                                  title="Send via email"
-                                  disabled={loading}
-                                >
-                                  📧
-                                </button>
-                              </div>
-                              <div className="summary-content">
-                                {summary.content}
-                              </div>
-                              {summary.raw_data?.count && (
-                                <div className="summary-stats">
-                                  Analyzed {summary.raw_data.count} tweet{summary.raw_data.count !== 1 ? 's' : ''}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Test Section - Playground */}
-      <div className="test-container">
-        <div className="jobs-header">
-          <h2>Playground</h2>
-          <button className="btn-primary" onClick={() => setShowTest(!showTest)}>
-            {showTest ? 'Hide' : 'Play'}
-          </button>
-        </div>
-
-        {showTest && (
-          <div className="card test-card">
-            <h3>Test Monitoring (Execute Immediately)</h3>
-            <p className="test-description">Test the monitoring functionality with a specific time range without creating a job.</p>
-            <div className="rate-limit-notice">
-              <strong>Note:</strong> The Twitter API free tier allows 1 request every 5 seconds. Requests will automatically wait to respect this limit.
-            </div>
-            
-            <div className="form-group">
-              <label>
-                <User size={16} />
-                X Username (without @)
-              </label>
-              <input
-                type="text"
-                placeholder="elonmusk"
-                value={testData.x_username}
-                onChange={(e) => setTestData({ ...testData, x_username: e.target.value })}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>
-                <Clock size={16} />
-                Hours Back (time range)
-              </label>
-              <input
-                type="number"
-                placeholder="24"
-                min="1"
-                max="168"
-                value={testData.hours_back}
-                onChange={(e) => setTestData({ ...testData, hours_back: e.target.value })}
-              />
-              <small>How many hours back to search (1-168 hours / 1 week)</small>
-            </div>
-            
-            <div className="form-group">
-              <label>
-                <Hash size={16} />
-                Topics (comma-separated, optional)
-              </label>
-              <input
-                type="text"
-                placeholder="AI, technology, space"
-                value={testData.topics}
-                onChange={(e) => setTestData({ ...testData, topics: e.target.value })}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>
-                📧 Email (optional - to receive summary)
-              </label>
-              <input
-                type="email"
-                placeholder="your@email.com"
-                value={testData.email}
-                onChange={(e) => setTestData({ ...testData, email: e.target.value })}
-              />
-              <small>If provided, the summary will be sent to this email address</small>
-            </div>
-            
-            <div className="form-actions">
-              <button 
-                className="btn-primary" 
-                onClick={runTest}
-                disabled={testLoading}
-              >
-                {testLoading ? 'Running Test...' : 'Run Test'}
-              </button>
-            </div>
-
-            {testResult && (
-              <div className="test-result">
-                <h4>Test Results</h4>
-                <div className="test-meta">
-                  <span><strong>Username:</strong> @{testResult.x_username}</span>
-                  <span><strong>Tweets Found:</strong> {testResult.tweets_found}</span>
-                  <span><strong>Time Range:</strong> Last {testResult.hours_back} hours</span>
-                  {testResult.topics && testResult.topics.length > 0 && (
-                    <span><strong>Topics:</strong> {testResult.topics.join(', ')}</span>
-                  )}
-                </div>
-                
-                <div className="summary-card">
-                  <div className="summary-header">
-                    <span className="summary-date">AI Summary</span>
-                  </div>
-                  <div className="summary-content">
-                    {testResult.summary}
-                  </div>
-                  <div className="summary-stats">
-                    Analyzed {testResult.tweets_found} tweet{testResult.tweets_found !== 1 ? 's' : ''}
-                  </div>
-                </div>
-
-                {testResult.tweets && testResult.tweets.length > 0 && (
-                  <div className="tweets-preview">
-                    <h5>Sample Tweets ({testResult.tweets.length} shown):</h5>
-                    {testResult.tweets.map((tweet, idx) => (
-                      <div key={idx} className="tweet-preview">
-                        <div className="tweet-text">{tweet.text}</div>
-                        <div className="tweet-meta">
-                          <span>❤️ {tweet.likes || 0}</span>
-                          <span>🔄 {tweet.reposts || 0}</span>
-                          <span>{new Date(tweet.timestamp).toLocaleString()}</span>
+                          <button
+                            className="btn-icon"
+                            onClick={() => toggleJob(job)}
+                            title={job.is_active ? 'Pause' : 'Resume'}
+                          >
+                            {job.is_active ? '⏸' : '▶'}
+                          </button>
+                          <button
+                            className="btn-icon danger"
+                            onClick={() => deleteJob(job.id)}
+                            title="Delete"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
+
+                      {job.topics && job.topics.length > 0 && (
+                        <div className="topics">
+                          <strong>Topics:</strong> {job.topics.join(', ')}
+                        </div>
+                      )}
+
+              <div className="summaries-section">
+                <div className="history-stats">
+                  {(() => {
+                    const stats = getJobStats(job.id)
+                    return (
+                      <>
+                        <span>Input tokens: {stats.inputTokens}</span>
+                        <span>Output tokens: {stats.outputTokens}</span>
+                        <span>Tweets analyzed: {stats.tweetsAnalyzed}</span>
+                        <button
+                          className="btn-link stats-link"
+                          onClick={() => toggleExecutions(job.id)}
+                        >
+                          Job runs: {stats.runCount}
+                        </button>
+                      </>
+                    )
+                  })()}
+                </div>
+                {expandedExecutions[job.id] && executions[job.id] && (
+                  <div className="executions">
+                            {(Array.isArray(executions[job.id]) ? executions[job.id] : [executions[job.id]])
+                              .filter(e => e)
+                              .map((execution, idx) => {
+                                const executionSummaries = (Array.isArray(summaries[job.id]) ? summaries[job.id] : [summaries[job.id]])
+                                  .filter(s => s && s.execution_id === execution.id)
+                                return (
+                                  <div key={execution.id || idx} className="execution-card">
+                                    <div className="execution-header">
+                                      <span className="execution-status">{execution.status}</span>
+                                      <span className="execution-date">
+                                        {execution.completed_at
+                                          ? new Date(execution.completed_at).toLocaleString()
+                                          : new Date(execution.started_at).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <div className="execution-meta">
+                                      <span>Tweets: {execution.tweets_fetched}</span>
+                                      {execution.error_message && (
+                                        <span className="execution-error">{execution.error_message}</span>
+                                      )}
+                                    </div>
+                                    {executionSummaries.length > 0 && (
+                                      <div className="execution-summaries">
+                                        {executionSummaries.map((summary) => (
+                                          <div key={summary.id} className="execution-summary">
+                                            <div className="execution-summary-header">
+                                              <span className="execution-summary-date">
+                                                {new Date(summary.created_at).toLocaleString()}
+                                              </span>
+                                            </div>
+                                            <div className="summary-content">
+                                              {summary.content}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                          </div>
+                        )}
+              </div>
+                    </div>
+                  ))
                 )}
               </div>
             )}
+
+            {activeView === 'playground' && (
+              <div className="test-container">
+                <div className="jobs-header">
+                  <h2>Play without creating a agentic task</h2>
+                </div>
+                <div className="card test-card">
+                  <div className="form-group">
+                    <label>
+                      <User size={16} />
+                      X Username (without @)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="elonmusk"
+                      value={testData.x_username}
+                      onChange={(e) => setTestData({ ...testData, x_username: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <Clock size={16} />
+                      Hours Back (time range)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="24"
+                      min="1"
+                      max="24"
+                      value={testData.hours_back}
+                      onChange={(e) => setTestData({ ...testData, hours_back: e.target.value })}
+                    />
+                    <small>How many hours back to search (1-24 hours)</small>
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <Hash size={16} />
+                      Topics (comma-separated, optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="AI, technology, space"
+                      value={testData.topics}
+                      onChange={(e) => setTestData({ ...testData, topics: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <Mail size={16} />
+                      Email (optional - to receive summary)
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="your@email.com"
+                      value={testData.email}
+                      onChange={(e) => setTestData({ ...testData, email: e.target.value })}
+                    />
+                    <small>If provided, the summary will be sent to this email address</small>
+                  </div>
+
+                  <div className="form-actions">
+                    <button 
+                      className="btn-primary" 
+                      onClick={runTest}
+                      disabled={testLoading}
+                    >
+                      {testLoading ? 'Running...' : 'Run'}
+                    </button>
+                  </div>
+
+                  {testResult && (
+                    <div className="test-result">
+                      <h4>Test Results</h4>
+                      <div className="test-meta">
+                        <span><strong>Username:</strong> @{testResult.x_username}</span>
+                        <span><strong>Tweets Found:</strong> {testResult.tweets_found}</span>
+                        <span><strong>Time Range:</strong> Last {testResult.hours_back} hours</span>
+                        {testResult.topics && testResult.topics.length > 0 && (
+                          <span><strong>Topics:</strong> {testResult.topics.join(', ')}</span>
+                        )}
+                      </div>
+                      
+                      <div className="summary-card">
+                        <div className="summary-header">
+                          <span className="summary-date">AI Summary</span>
+                        </div>
+                        <div className="summary-content">
+                          {testResult.summary}
+                        </div>
+                        <div className="summary-stats">
+                          Analyzed {testResult.tweets_found} tweet{testResult.tweets_found !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+
+                      {testResult.tweets && testResult.tweets.length > 0 && (
+                        <div className="tweets-preview">
+                          <h5>Sample Tweets ({testResult.tweets.length} shown):</h5>
+                          {testResult.tweets.map((tweet, idx) => (
+                            <div key={idx} className="tweet-preview">
+                              <div className="tweet-text">{tweet.text}</div>
+                              <div className="tweet-meta">
+                                <span>❤️ {tweet.likes || 0}</span>
+                                <span>🔄 {tweet.reposts || 0}</span>
+                                <span>{new Date(tweet.timestamp).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
-    </div>
     </>
   )
 }
@@ -601,4 +731,3 @@ function App() {
 }
 
 export default App
-
