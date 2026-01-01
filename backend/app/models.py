@@ -67,7 +67,16 @@ class Job(Base):
     language = Column(String(20), nullable=False, default="en")
     email = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, index=True)
-    status = Column(Enum(JobStatus), default=JobStatus.ACTIVE, nullable=False, index=True)
+    status = Column(
+        Enum(
+            JobStatus,
+            name="jobstatus",
+            values_callable=lambda x: [e.value for e in x]
+        ),
+        default=JobStatus.ACTIVE,
+        nullable=False,
+        index=True
+    )
     notification_target_id = Column(Integer, ForeignKey("notification_targets.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_run = Column(DateTime(timezone=True), nullable=True)
