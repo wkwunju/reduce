@@ -144,6 +144,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  height: 40px;
   transition: background-color 0.2s;
 }
 
@@ -172,6 +173,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  height: 40px;
   transition: all 0.2s;
 }
 

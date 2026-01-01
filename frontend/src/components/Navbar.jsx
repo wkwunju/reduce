@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Profile from './Profile';
 
 export default function Navbar({ onShowAuth, onToggleMenu }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
@@ -98,7 +98,26 @@ export default function Navbar({ onShowAuth, onToggleMenu }) {
                     onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
                     onMouseLeave={(e) => e.target.style.background = 'none'}
                   >
-                    Profile
+                    Password
+                  </button>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setShowMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      background: 'none',
+                      border: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
+                    onMouseLeave={(e) => e.target.style.background = 'none'}
+                  >
+                    Log out
                   </button>
                 </div>
               )}

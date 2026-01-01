@@ -36,6 +36,12 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
   useEffect(() => {
     if (user) {
       loadJobs()
+    } else {
+      setActiveView('playground')
+      setJobs([])
+      setSummaries({})
+      setExecutions({})
+      setExpandedExecutions({})
     }
   }, [user])
 
@@ -391,7 +397,7 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
                         <h3>Agentic Tasks</h3>
                         <p>Automatically track X accounts and get AI summaries delivered on schedule</p>
                         <button className="btn-primary" onClick={() => setShowAuthModal(true)}>
-                          Login or Register to Create Tasks
+                          Login / Register
                         </button>
                       </>
                     )}
