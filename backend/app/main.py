@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import jobs, monitoring, auth, notifications
@@ -8,14 +9,19 @@ from app.models import Base
 app = FastAPI(title="XTrack API", version="1.0.0")
 
 # CORS middleware
+frontend_origins = os.getenv("FRONTEND_ORIGINS", "")
+allow_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://reduce-three.vercel.app",
+]
+if frontend_origins:
+    allow_origins.extend([origin.strip() for origin in frontend_origins.split(",") if origin.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "https://reduce-three.vercel.app",  # 添加你的实际 Vercel 域名
-        "https://*.vercel.app"  # 保留通配符作为备用
-    ],
+    allow_origins=allow_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
