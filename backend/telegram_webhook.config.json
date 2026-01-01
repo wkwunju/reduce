@@ -1,0 +1,8 @@
+{
+  "dev": {
+    "webhook_url": "https://<your-ngrok-domain>/api/notifications/telegram/webhook"
+  },
+  "railway": {
+    "webhook_url": "https://<your-railway-domain>/api/notifications/telegram/webhook"
+  }
+}

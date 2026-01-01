@@ -18,17 +18,21 @@ class TestRequest(BaseModel):
     topics: Optional[List[str]] = []
     hours_back: Optional[int] = 24  # Default to last 24 hours
     email: Optional[str] = None  # Optional email to send test results
+    language: Optional[str] = None
 
 class SendEmailRequest(BaseModel):
     email: str
     summary_id: Optional[str] = None  # If provided, send specific summary
 
 @router.post("/test")
-def test_monitoring(test_request: TestRequest):
+def test_monitoring(
+    test_request: TestRequest,
+    db: Session = Depends(get_db)
+):
     """Test function to execute monitoring immediately with a time range"""
     print("\n" + "=" * 80)
     print("[API ENDPOINT] /api/monitoring/test - Starting test")
-    print(f"[API ENDPOINT] Request data: username={test_request.x_username}, hours_back={test_request.hours_back}, topics={test_request.topics}")
+    print(f"[API ENDPOINT] Request data: username={test_request.x_username}, hours_back={test_request.hours_back}, topics={test_request.topics}, language={test_request.language}")
     print("=" * 80)
     
     try:
@@ -65,9 +69,11 @@ def test_monitoring(test_request: TestRequest):
             tweets,
             test_request.topics,
             x_username=test_request.x_username,
-            time_range=time_range
+            time_range=time_range,
+            language=test_request.language
         )
         summary_text = summary_result.get("summary", "")
+        usage = summary_result.get("usage", {}) or {}
         print(f"[API ENDPOINT] ✅ Step 3 complete: Summary generated ({len(summary_text)} characters)")
         
         # Send email if provided
@@ -87,12 +93,25 @@ def test_monitoring(test_request: TestRequest):
             else:
                 print(f"[API ENDPOINT] ⚠️  Step 4: Email sending failed")
         
+        storage = DatabaseStorage(db)
+        playground_summary = storage.add_playground_summary(
+            x_username=test_request.x_username,
+            topics=test_request.topics or [],
+            hours_back=test_request.hours_back or 24,
+            content=summary_text,
+            raw_data={"count": len(tweets)},
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0)
+        )
+
         result = {
             "x_username": test_request.x_username,
             "topics": test_request.topics,
             "hours_back": test_request.hours_back,
+            "language": test_request.language,
             "tweets_found": len(tweets),
             "summary": summary_text,
+            "summary_id": playground_summary.get("id"),
             "tweets": tweets[:10],  # Return first 10 tweets for preview
             "since_time": since_time.isoformat(),
             "until_time": until_time.isoformat(),

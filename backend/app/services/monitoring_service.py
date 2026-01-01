@@ -5,6 +5,7 @@ from app.services.twitter_service import TwitterService
 from app.services.llm_service import LLMService
 from app.services.sendgrid_service import SendGridService
 from app.services.db_storage import DatabaseStorage
+from app.services.notification_service import NotificationService
 from app.models import JobExecution, ExecutionStatus
 
 class MonitoringService:
@@ -76,7 +77,8 @@ class MonitoringService:
                 tweets,
                 topics,
                 x_username=job.get("x_username"),
-                time_range=time_range
+                time_range=time_range,
+                language=job.get("language")
             )
             summary_text = summary_result.get("summary", "")
             usage = summary_result.get("usage", {})
@@ -114,6 +116,25 @@ class MonitoringService:
                     print(f"[MONITORING SERVICE] ⚠️  Step 5: Email sending failed (check logs)")
             else:
                 print("[MONITORING SERVICE] Step 5: Skipping email (no email configured for this job)")
+
+            if job.get("user_id"):
+                print("[MONITORING SERVICE] Step 6: Sending notification...")
+                target_ids = job.get("notification_target_ids") or []
+                target_id = job.get("notification_target_id")
+                if target_ids or target_id:
+                    notifier = NotificationService(db)
+                    notifier.send_summary(
+                        user_id=job["user_id"],
+                        x_username=job["x_username"],
+                        summary=summary_text,
+                        tweets_count=len(tweets),
+                        topics=topics,
+                        time_range=time_range,
+                        target_ids=target_ids,
+                        target_id=target_id
+                    )
+                else:
+                    print("[MONITORING SERVICE] Step 6: Skipping notification (no targets selected)")
 
             execution.status = ExecutionStatus.COMPLETED
             execution.completed_at = datetime.utcnow()

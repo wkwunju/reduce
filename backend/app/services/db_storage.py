@@ -2,7 +2,7 @@
 Database storage service for jobs and summaries
 """
 from sqlalchemy.orm import Session
-from app.models import User, Job, Summary, JobExecution
+from app.models import User, Job, Summary, JobExecution, NotificationTarget, JobStatus
 from typing import List, Optional, Dict
 from datetime import datetime
 import uuid
@@ -25,17 +25,26 @@ class DatabaseStorage:
         return user
     
     # Job operations
-    def create_job(self, x_username: str, frequency: str, topics: List[str], 
-                   email: Optional[str] = None, user_id: Optional[int] = None) -> Dict:
+    def create_job(self, x_username: str, frequency: str, topics: List[str],
+                   email: Optional[str] = None, user_id: Optional[int] = None,
+                   notification_target_ids: Optional[List[int]] = None,
+                   language: Optional[str] = None) -> Dict:
         """Create a new monitoring job"""
         job = Job(
             user_id=user_id,
             x_username=x_username,
             frequency=frequency,
             topics=topics or [],
+            language=language or "en",
             email=email,
             is_active=True
         )
+        if notification_target_ids:
+            targets = self.db.query(NotificationTarget).filter(
+                NotificationTarget.id.in_(notification_target_ids),
+                NotificationTarget.user_id == user_id
+            ).all()
+            job.notification_targets = targets
         self.db.add(job)
         self.db.commit()
         self.db.refresh(job)
@@ -49,6 +58,7 @@ class DatabaseStorage:
     def get_all_jobs(self, user_id: Optional[int] = None) -> List[Dict]:
         """Get all jobs, optionally filtered by user_id"""
         query = self.db.query(Job)
+        query = query.filter(Job.status != JobStatus.DELETED)
         if user_id is not None:
             query = query.filter(Job.user_id == user_id)
         jobs = query.all()
@@ -63,10 +73,16 @@ class DatabaseStorage:
         job = self.db.query(Job).filter(Job.id == job_id).first()
         if not job:
             return None
-        
+        notification_target_ids = kwargs.pop("notification_target_ids", None)
         for key, value in kwargs.items():
             if value is not None and hasattr(job, key):
                 setattr(job, key, value)
+        if notification_target_ids is not None:
+            targets = self.db.query(NotificationTarget).filter(
+                NotificationTarget.id.in_(notification_target_ids),
+                NotificationTarget.user_id == job.user_id
+            ).all()
+            job.notification_targets = targets
         
         job.updated_at = datetime.utcnow()
         self.db.commit()
@@ -74,13 +90,16 @@ class DatabaseStorage:
         return self._job_to_dict(job)
     
     def delete_job(self, job_id: int) -> bool:
-        """Delete a job and its summaries"""
+        """Soft delete a job to preserve executions and summaries"""
         job = self.db.query(Job).filter(Job.id == job_id).first()
-        if job:
-            self.db.delete(job)
+        if not job:
+            return False
+        if job.status != JobStatus.DELETED:
+            job.status = JobStatus.DELETED
+            job.is_active = False
+            job.updated_at = datetime.utcnow()
             self.db.commit()
-            return True
-        return False
+        return True
     
     # Summary operations
     def add_summary(
@@ -135,18 +154,53 @@ class DatabaseStorage:
     # Helper methods
     def _job_to_dict(self, job: Job) -> Dict:
         """Convert Job model to dict"""
+        notification_target_ids = [t.id for t in job.notification_targets] if job.notification_targets else []
+        if not notification_target_ids and job.notification_target_id:
+            notification_target_ids = [job.notification_target_id]
         return {
             "id": job.id,
             "user_id": job.user_id,
             "x_username": job.x_username,
             "frequency": job.frequency,
             "topics": job.topics or [],
+            "language": job.language,
             "email": job.email,
             "is_active": job.is_active,
+            "status": job.status.value if job.status else None,
+            "notification_target_id": job.notification_target_id,
+            "notification_target_ids": notification_target_ids,
             "created_at": job.created_at.isoformat() if job.created_at else None,
             "last_run": job.last_run.isoformat() if job.last_run else None,
             "updated_at": job.updated_at.isoformat() if job.updated_at else None
         }
+
+    def add_playground_summary(
+        self,
+        x_username: str,
+        topics: List[str],
+        hours_back: int,
+        content: str,
+        raw_data: Dict,
+        input_tokens: int = 0,
+        output_tokens: int = 0
+    ) -> Dict:
+        """Add a summary for playground runs"""
+        summary = Summary(
+            id=str(uuid.uuid4()),
+            is_playground=True,
+            x_username=x_username,
+            topics=topics or [],
+            hours_back=hours_back,
+            content=content,
+            tweets_count=raw_data.get("count", 0),
+            raw_data=raw_data,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens
+        )
+        self.db.add(summary)
+        self.db.commit()
+        self.db.refresh(summary)
+        return self._summary_to_dict(summary)
     
     def _summary_to_dict(self, summary: Summary) -> Dict:
         """Convert Summary model to dict"""

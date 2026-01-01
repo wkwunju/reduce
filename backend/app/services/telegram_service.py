@@ -1,0 +1,47 @@
+import os
+from typing import Optional
+import requests
+
+
+class TelegramService:
+    def __init__(self):
+        self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        self.api_base = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else None
+
+    def send_message(self, chat_id: str, text: str) -> bool:
+        if not self.api_base:
+            print("[TELEGRAM] ⚠️  TELEGRAM_BOT_TOKEN not set, skipping send")
+            return False
+
+        try:
+            response = requests.post(
+                f"{self.api_base}/sendMessage",
+                json={"chat_id": chat_id, "text": text},
+                timeout=10
+            )
+            if response.status_code == 200:
+                return True
+            print(f"[TELEGRAM] ⚠️  sendMessage failed: {response.status_code} {response.text}")
+            return False
+        except Exception as e:
+            print(f"[TELEGRAM] ❌ Error sending message: {e}")
+            return False
+
+    def build_summary_message(
+        self,
+        x_username: str,
+        summary: str,
+        tweets_count: int,
+        topics: Optional[list],
+        time_range: Optional[str]
+    ) -> str:
+        topics_line = f"Topics: {', '.join(topics)}" if topics else "Topics: (none)"
+        time_line = f"Time range: {time_range}" if time_range else "Time range: (n/a)"
+        return (
+            "XTrack Summary\n"
+            f"Account: @{x_username}\n"
+            f"{time_line}\n"
+            f"Tweets analyzed: {tweets_count}\n"
+            f"{topics_line}\n\n"
+            f"{summary}"
+        )

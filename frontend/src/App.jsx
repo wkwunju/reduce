@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Plus, Trash2, Zap, Clock, Hash, User, TestTube, Mail } from 'lucide-react'
+import { Plus, Trash2, Zap, Clock, Hash, User, TestTube, Mail, Share2, Send } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import AuthFlow from './components/AuthFlow'
 import Navbar from './components/Navbar'
+import Profile from './components/Profile'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
-function MainApp({ showAuthModal, setShowAuthModal }) {
+function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
   const { user } = useAuth();
   const [jobs, setJobs] = useState([])
   const [showAddJob, setShowAddJob] = useState(false)
@@ -16,16 +17,21 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
     x_username: '',
     frequency: 'daily',
     topics: '',
-    email: ''
+    language: 'en',
+    email: '',
+    send_email: false,
+    send_telegram: false,
+    telegram_target_ids: []
   })
   const [summaries, setSummaries] = useState({})
   const [executions, setExecutions] = useState({})
+  const [telegramTargets, setTelegramTargets] = useState([])
   const [loading, setLoading] = useState(false)
   const [testData, setTestData] = useState({
     x_username: '',
     hours_back: 24,
     topics: '',
-    email: ''
+    language: 'en'
   })
   const [testResult, setTestResult] = useState(null)
   const [testLoading, setTestLoading] = useState(false)
@@ -33,15 +39,24 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [expandedExecutions, setExpandedExecutions] = useState({})
 
+  const normalizeSummary = (text = '') =>
+    text
+      .replace(/\*/g, '')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+
   useEffect(() => {
     if (user) {
       loadJobs()
+      loadTelegramTargets()
     } else {
       setActiveView('playground')
       setJobs([])
       setSummaries({})
       setExecutions({})
       setExpandedExecutions({})
+      setTelegramTargets([])
     }
   }, [user])
 
@@ -72,16 +87,41 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
       return
     }
     
+    const selectedTelegramTargetIds = newJob.send_telegram ? newJob.telegram_target_ids : []
+    const hasTelegramTargets = telegramTargets.some((target) => target.channel === 'telegram')
+    if (newJob.send_telegram && !hasTelegramTargets) {
+      alert('Please bind a Telegram target first.')
+      if (onShowProfile) {
+        onShowProfile()
+      }
+      return
+    }
+    if (newJob.send_telegram && selectedTelegramTargetIds.length === 0) {
+      alert('Please select at least one Telegram target.')
+      return
+    }
+
     try {
       const topics = newJob.topics.split(',').map(t => t.trim()).filter(t => t)
       const response = await axios.post(`${API_BASE}/jobs/`, {
         x_username: newJob.x_username.trim(),
         frequency: newJob.frequency,
         topics: topics,
-        email: newJob.email.trim() || null
+        language: newJob.language,
+        email: newJob.send_email ? user.email : null,
+        notification_target_ids: selectedTelegramTargetIds.length > 0 ? selectedTelegramTargetIds : null
       })
       setJobs([...jobs, response.data])
-      setNewJob({ x_username: '', frequency: 'daily', topics: '', email: '' })
+      setNewJob({
+        x_username: '',
+        frequency: 'daily',
+        topics: '',
+        language: 'en',
+        email: '',
+        send_email: false,
+        send_telegram: false,
+        telegram_target_ids: []
+      })
       setShowAddJob(false)
     } catch (error) {
       alert('Error creating task: ' + (error.response?.data?.detail || error.message))
@@ -141,6 +181,24 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
     } catch (error) {
       console.error('Error loading executions:', error)
     }
+  }
+
+  const loadTelegramTargets = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/notifications/targets`)
+      setTelegramTargets(response.data || [])
+    } catch (error) {
+      console.error('Error loading Telegram targets:', error)
+    }
+  }
+
+  const telegramTargetsForUser = telegramTargets.filter(
+    (target) => target.channel === 'telegram'
+  )
+
+  const formatTelegramTargetLabel = (target) => {
+    const label = target?.metadata?.title || target?.destination
+    return label || 'Telegram target'
   }
 
   const preloadExecutionCounts = async (jobsList) => {
@@ -245,7 +303,7 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
         x_username: testData.x_username.trim(),
         hours_back: parseInt(testData.hours_back) || 24,
         topics: topics,
-        email: testData.email.trim() || null
+        language: testData.language
       })
       setTestResult(response.data)
     } catch (error) {
@@ -266,11 +324,32 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
     { value: 'daily', label: 'Daily' }
   ]
 
+  const languageOptions = [
+    { value: 'zh', label: '中文' },
+    { value: 'en', label: 'English' },
+    { value: 'es', label: 'Español' },
+    { value: 'fr', label: 'Français' },
+    { value: 'de', label: 'Deutsch' },
+    { value: 'ja', label: '日本語' },
+    { value: 'ko', label: '한국어' },
+    { value: 'pt', label: 'Português' },
+    { value: 'ru', label: 'Русский' },
+    { value: 'it', label: 'Italiano' },
+    { value: 'ar', label: 'العربية' },
+    { value: 'hi', label: 'हिन्दी' },
+    { value: 'id', label: 'Bahasa Indonesia' },
+    { value: 'tr', label: 'Türkçe' },
+    { value: 'vi', label: 'Tiếng Việt' },
+    { value: 'th', label: 'ไทย' },
+    { value: 'nl', label: 'Nederlands' }
+  ]
+
   return (
     <>
       <Navbar
         onShowAuth={() => setShowAuthModal(true)}
         onToggleMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+        onShowProfile={onShowProfile}
       />
       <div className="app-layout">
         {/* Left Sidebar */}
@@ -355,19 +434,86 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
                       />
                     </div>
                     <div className="form-group">
-              <label>
-                <Mail size={16} />
-                Email (optional - to receive summaries)
-              </label>
-                      <input
-                        type="email"
-                        placeholder="your@email.com"
-                        value={newJob.email}
-                        onChange={(e) => setNewJob({ ...newJob, email: e.target.value })}
-                      />
-                      <small>If provided, summaries will be automatically sent to this email when the task runs</small>
+                      <label>
+                        Language
+                      </label>
+                      <select
+                        value={newJob.language}
+                        onChange={(e) => setNewJob({ ...newJob, language: e.target.value })}
+                      >
+                        {languageOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="form-actions">
+                    <div className="form-group form-group-distribution">
+                      <label>
+                        <Share2 size={16} />
+                        Distribution Channel
+                      </label>
+                      <div className="option-row">
+                        <label className="option-item">
+                          <input
+                            type="checkbox"
+                            checked={newJob.send_email}
+                            onChange={(e) => setNewJob({ ...newJob, send_email: e.target.checked })}
+                          />
+                          <span>
+                            <Mail size={16} />
+                            Email — send to {user?.email}
+                          </span>
+                        </label>
+                        <label className="option-item">
+                          <input
+                            type="checkbox"
+                            checked={newJob.send_telegram}
+                            onChange={(e) => {
+                              const checked = e.target.checked
+                              setNewJob({
+                                ...newJob,
+                                send_telegram: checked,
+                                telegram_target_ids: checked ? newJob.telegram_target_ids : []
+                              })
+                            }}
+                          />
+                          <span>
+                            <Send size={16} />
+                            Telegram — send to selected targets
+                          </span>
+                        </label>
+                        {newJob.send_telegram && telegramTargetsForUser.length > 0 && (
+                          <div className="telegram-targets">
+                            {telegramTargetsForUser.map((target) => (
+                              <label key={target.id} className="telegram-target-item">
+                                <input
+                                  type="checkbox"
+                                  checked={newJob.telegram_target_ids.includes(target.id)}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked
+                                    const nextIds = isChecked
+                                      ? [...newJob.telegram_target_ids, target.id]
+                                      : newJob.telegram_target_ids.filter((id) => id !== target.id)
+                                    setNewJob({
+                                      ...newJob,
+                                      send_telegram: true,
+                                      telegram_target_ids: nextIds
+                                    })
+                                  }}
+                                />
+                                <span>{formatTelegramTargetLabel(target)}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        {newJob.send_telegram && telegramTargetsForUser.length === 0 && (
+                          <div className="telegram-warning">
+                            No Telegram target set.{' '}
+                            <button type="button" onClick={onShowProfile}>Bind now</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="form-actions form-actions-divider">
                       <button className="btn-secondary" onClick={() => setShowAddJob(false)}>
                         Cancel
                       </button>
@@ -508,7 +654,7 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
                                               </span>
                                             </div>
                                             <div className="summary-content">
-                                              {summary.content}
+                                              {normalizeSummary(summary.content)}
                                             </div>
                                           </div>
                                         ))}
@@ -573,19 +719,18 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
                       onChange={(e) => setTestData({ ...testData, topics: e.target.value })}
                     />
                   </div>
-
                   <div className="form-group">
                     <label>
-                      <Mail size={16} />
-                      Email (optional - to receive summary)
+                      Language
                     </label>
-                    <input
-                      type="email"
-                      placeholder="your@email.com"
-                      value={testData.email}
-                      onChange={(e) => setTestData({ ...testData, email: e.target.value })}
-                    />
-                    <small>If provided, the summary will be sent to this email address</small>
+                    <select
+                      value={testData.language}
+                      onChange={(e) => setTestData({ ...testData, language: e.target.value })}
+                    >
+                      {languageOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="form-actions">
@@ -615,7 +760,7 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
                           <span className="summary-date">AI Summary</span>
                         </div>
                         <div className="summary-content">
-                          {testResult.summary}
+                          {normalizeSummary(testResult.summary)}
                         </div>
                         <div className="summary-stats">
                           Analyzed {testResult.tweets_found} tweet{testResult.tweets_found !== 1 ? 's' : ''}
@@ -652,6 +797,7 @@ function MainApp({ showAuthModal, setShowAuthModal }) {
 function AppContent() {
   const { user, loading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   if (loading) {
     return (
@@ -680,7 +826,11 @@ function AppContent() {
 
   return (
     <>
-      <MainApp showAuthModal={showAuthModal} setShowAuthModal={setShowAuthModal} />
+      <MainApp
+        showAuthModal={showAuthModal}
+        setShowAuthModal={setShowAuthModal}
+        onShowProfile={() => setShowProfileModal(true)}
+      />
       {showAuthModal && (
         <div style={{
           position: 'fixed',
@@ -724,6 +874,7 @@ function AppContent() {
           </div>
         </div>
       )}
+      {showProfileModal && <Profile onClose={() => setShowProfileModal(false)} />}
     </>
   );
 }

@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import Profile from './Profile';
 
-export default function Navbar({ onShowAuth, onToggleMenu }) {
+export default function Navbar({ onShowAuth, onToggleMenu, onShowProfile }) {
   const { user, logout } = useAuth();
-  const [showProfile, setShowProfile] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
   return (
@@ -82,7 +80,9 @@ export default function Navbar({ onShowAuth, onToggleMenu }) {
                 }}>
                   <button
                     onClick={() => {
-                      setShowProfile(true);
+                      if (onShowProfile) {
+                        onShowProfile();
+                      }
                       setShowMenu(false);
                     }}
                     style={{
@@ -142,7 +142,6 @@ export default function Navbar({ onShowAuth, onToggleMenu }) {
         </div>
       </nav>
 
-      {showProfile && <Profile onClose={() => setShowProfile(false)} />}
     </>
   );
 }

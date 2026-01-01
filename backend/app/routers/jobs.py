@@ -6,7 +6,7 @@ from app.database import get_db
 from app.services.db_storage import DatabaseStorage
 from app.scheduler import scheduler
 from app.dependencies.auth import get_current_user, get_current_user_optional
-from app.models import User
+from app.models import User, JobStatus
 
 router = APIRouter()
 
@@ -14,13 +14,17 @@ class JobCreateRequest(BaseModel):
     x_username: str
     frequency: str
     topics: List[str] = []
+    language: Optional[str] = None
     email: Optional[str] = None
+    notification_target_ids: Optional[List[int]] = None
 
 class JobUpdateRequest(BaseModel):
     frequency: Optional[str] = None
     topics: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    language: Optional[str] = None
     email: Optional[str] = None
+    notification_target_ids: Optional[List[int]] = None
 
 @router.post("/")
 def create_job(
@@ -34,8 +38,10 @@ def create_job(
         x_username=job_request.x_username,
         frequency=job_request.frequency,
         topics=job_request.topics,
-        email=job_request.email or current_user.email,  # Use user's email if not provided
-        user_id=current_user.id  # Associate job with current user
+        language=job_request.language,
+        email=job_request.email,  # Only use email when explicitly provided
+        user_id=current_user.id,  # Associate job with current user
+        notification_target_ids=job_request.notification_target_ids
     )
     
     # Schedule the job automatically
@@ -63,6 +69,8 @@ def get_job(
     job = storage.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    if job.get("status") == JobStatus.DELETED.value:
+        raise HTTPException(status_code=404, detail="Job not found")
     
     # Check ownership
     if job["user_id"] != current_user.id:
@@ -87,6 +95,8 @@ def update_job(
     
     if existing_job["user_id"] != current_user.id:
         raise HTTPException(status_code=403, detail="You don't have permission to update this job")
+    if existing_job.get("status") == JobStatus.DELETED.value:
+        raise HTTPException(status_code=404, detail="Job not found")
     
     update_data = {}
     if job_update.frequency is not None:
@@ -95,8 +105,12 @@ def update_job(
         update_data["topics"] = job_update.topics
     if job_update.is_active is not None:
         update_data["is_active"] = job_update.is_active
+    if job_update.language is not None:
+        update_data["language"] = job_update.language
     if job_update.email is not None:
         update_data["email"] = job_update.email
+    if job_update.notification_target_ids is not None:
+        update_data["notification_target_ids"] = job_update.notification_target_ids
     
     job = storage.update_job(job_id, **update_data)
     if not job:
@@ -124,15 +138,15 @@ def delete_job(
     existing_job = storage.get_job(job_id)
     if not existing_job:
         raise HTTPException(status_code=404, detail="Job not found")
+    if existing_job.get("status") == JobStatus.DELETED.value:
+        return {"message": "Job deleted successfully"}
     
     if existing_job["user_id"] != current_user.id:
         raise HTTPException(status_code=403, detail="You don't have permission to delete this job")
     
-    # Unschedule first
-    scheduler.unschedule_job(job_id)
-    
     if not storage.delete_job(job_id):
         raise HTTPException(status_code=404, detail="Job not found")
+    scheduler.unschedule_job(job_id)
     return {"message": "Job deleted successfully"}
 
 @router.get("/{job_id}/summaries")

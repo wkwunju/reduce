@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import jobs, monitoring, auth
+from app.routers import jobs, monitoring, auth, notifications
 from app.scheduler import scheduler
 from app.database import engine
 from app.models import Base
@@ -25,6 +25,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(monitoring.router, prefix="/api/monitoring", tags=["monitoring"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 
 @app.on_event("startup")
 async def startup_event():
@@ -51,4 +52,3 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
-

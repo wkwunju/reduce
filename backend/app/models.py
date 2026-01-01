@@ -18,6 +18,11 @@ class UserStatus(str, enum.Enum):
     ACTIVE = "active"          # Normal active user
     SUSPENDED = "suspended"    # Account suspended/banned
 
+class JobStatus(str, enum.Enum):
+    """Job lifecycle status"""
+    ACTIVE = "active"
+    DELETED = "deleted"
+
 class VerificationCodeType(str, enum.Enum):
     """Type of verification code"""
     EMAIL_VERIFICATION = "email_verification"  # For email activation
@@ -29,6 +34,11 @@ class ExecutionStatus(str, enum.Enum):
     RUNNING = "running"      # Currently executing
     COMPLETED = "completed"  # Successfully completed
     FAILED = "failed"        # Failed with error
+
+class NotificationChannel(str, enum.Enum):
+    """Notification delivery channel"""
+    TELEGRAM = "telegram"
+    EMAIL = "email"
 
 class User(Base):
     __tablename__ = "users"
@@ -44,6 +54,7 @@ class User(Base):
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     
     jobs = relationship("Job", back_populates="user", cascade="all, delete-orphan")
+    notification_targets = relationship("NotificationTarget", back_populates="user", cascade="all, delete-orphan")
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -53,8 +64,11 @@ class Job(Base):
     x_username = Column(String(255), nullable=False, index=True)
     frequency = Column(String(50), nullable=False)
     topics = Column(JSON, default=list)  # Store as JSON for SQLite/PostgreSQL compatibility
+    language = Column(String(20), nullable=False, default="en")
     email = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, index=True)
+    status = Column(Enum(JobStatus), default=JobStatus.ACTIVE, nullable=False, index=True)
+    notification_target_id = Column(Integer, ForeignKey("notification_targets.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_run = Column(DateTime(timezone=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -62,6 +76,12 @@ class Job(Base):
     user = relationship("User", back_populates="jobs")
     summaries = relationship("Summary", back_populates="job", cascade="all, delete-orphan")
     executions = relationship("JobExecution", back_populates="job", cascade="all, delete-orphan")
+    notification_target = relationship("NotificationTarget")
+    notification_targets = relationship(
+        "NotificationTarget",
+        secondary="job_notification_targets",
+        back_populates="jobs"
+    )
 
 class JobExecution(Base):
     __tablename__ = "job_executions"
@@ -105,6 +125,42 @@ class Summary(Base):
     
     job = relationship("Job", back_populates="summaries")
     execution = relationship("JobExecution", back_populates="summaries")
+
+class NotificationTarget(Base):
+    __tablename__ = "notification_targets"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel = Column(Enum(NotificationChannel), nullable=False, index=True)
+    destination = Column(String(255), nullable=False)
+    meta = Column(JSON, nullable=True)
+    is_default = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    user = relationship("User", back_populates="notification_targets")
+    jobs = relationship(
+        "Job",
+        secondary="job_notification_targets",
+        back_populates="notification_targets"
+    )
+
+class JobNotificationTarget(Base):
+    __tablename__ = "job_notification_targets"
+
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
+    notification_target_id = Column(Integer, ForeignKey("notification_targets.id", ondelete="CASCADE"), primary_key=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class NotificationBindToken(Base):
+    __tablename__ = "notification_bind_tokens"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel = Column(Enum(NotificationChannel), nullable=False, index=True)
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class VerificationCode(Base):
     __tablename__ = "verification_codes"

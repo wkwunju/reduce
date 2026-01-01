@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional
 from dotenv import load_dotenv
 import google.generativeai as genai
 
@@ -40,7 +40,8 @@ class LLMService:
         tweets: List[Dict],
         topics: List[str] = None,
         x_username: str = None,
-        time_range: str = None
+        time_range: str = None,
+        language: Optional[str] = None
     ) -> Dict:
         """
         Generate AI summary of tweets using Gemini or ChatGPT
@@ -54,6 +55,8 @@ class LLMService:
             print(f"[LLM SERVICE] Username: @{x_username}")
         if time_range:
             print(f"[LLM SERVICE] Time range: {time_range}")
+        if language:
+            print(f"[LLM SERVICE] Language: {language}")
         
         if not tweets:
             print("[LLM SERVICE] ⚠️  No tweets to summarize")
@@ -75,6 +78,27 @@ class LLMService:
         combined_text = "\n---\n".join(tweet_texts)
         print(f"[LLM SERVICE] Combined text length: {len(combined_text)} characters")
         
+        language_map = {
+            "zh": "Chinese",
+            "en": "English",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "pt": "Portuguese",
+            "ru": "Russian",
+            "it": "Italian",
+            "ar": "Arabic",
+            "hi": "Hindi",
+            "id": "Indonesian",
+            "tr": "Turkish",
+            "vi": "Vietnamese",
+            "th": "Thai",
+            "nl": "Dutch"
+        }
+        language_label = language_map.get((language or "en").lower(), "English")
+
         # Create prompt - emphasize topics in the prompt rather than filtering
         if topics and len(topics) > 0:
             topics_str = ", ".join(topics)
@@ -100,6 +124,7 @@ Instructions:
         time_line = f"Time range: {time_range}\n" if time_range else ""
 
         prompt = f"""Please provide a concise analysis of the following tweets from a user's X (Twitter) account.
+Respond in {language_label}. Use plain text only: no markdown, no bullets, no asterisks.
 {topics_instruction}
 {account_line}{time_line}Tweets:
 {combined_text}

@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     
     # Authentication
     session_secret: str
+
+    # Telegram
+    telegram_bot_token: Optional[str] = None
+    telegram_webhook_dev: Optional[str] = None
+    telegram_webhook_railway: Optional[str] = None
     
     class Config:
         env_file = ".env"
@@ -32,7 +37,9 @@ class Settings(BaseSettings):
             'sendgrid_api_key': {'env': 'SENDGRID_API_KEY'},
             'from_email': {'env': 'FROM_EMAIL'},
             'session_secret': {'env': 'SESSION_SECRET'},
+            'telegram_bot_token': {'env': 'TELEGRAM_BOT_TOKEN'},
+            'telegram_webhook_dev': {'env': 'TELEGRAM_WEBHOOK_DEV'},
+            'telegram_webhook_railway': {'env': 'TELEGRAM_WEBHOOK_RAILWAY'},
         }
 
 settings = Settings()
-

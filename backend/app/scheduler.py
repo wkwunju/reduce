@@ -120,6 +120,9 @@ class JobScheduler:
             if not job.get("is_active", True):
                 print(f"[SCHEDULER] ⚠️  Job {job_id} is not active, skipping...")
                 return
+            if job.get("status") == "deleted":
+                print(f"[SCHEDULER] ⚠️  Job {job_id} is deleted, skipping...")
+                return
             
             # Run the monitoring job
             summary = self.monitoring_service.run_job(job, db)
