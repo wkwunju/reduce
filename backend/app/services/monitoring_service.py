@@ -7,6 +7,7 @@ from app.services.sendgrid_service import SendGridService
 from app.services.db_storage import DatabaseStorage
 from app.services.notification_service import NotificationService
 from app.models import JobExecution, ExecutionStatus
+from app.utils.summary_headline import build_summary_headline
 
 class MonitoringService:
     def __init__(self):
@@ -81,6 +82,7 @@ class MonitoringService:
                 language=job.get("language")
             )
             summary_text = summary_result.get("summary", "")
+            headline = summary_result.get("headline") or build_summary_headline(summary_text)
             usage = summary_result.get("usage", {})
             input_tokens = usage.get("input_tokens", 0)
             output_tokens = usage.get("output_tokens", 0)
@@ -108,7 +110,8 @@ class MonitoringService:
                     x_username=job["x_username"],
                     summary=summary_text,
                     tweets_count=len(tweets),
-                    topics=topics
+                    topics=topics,
+                    headline=headline
                 )
                 if email_sent:
                     print(f"[MONITORING SERVICE] ✅ Step 5 complete: Email sent successfully")
@@ -131,7 +134,8 @@ class MonitoringService:
                         topics=topics,
                         time_range=time_range,
                         target_ids=target_ids,
-                        target_id=target_id
+                        target_id=target_id,
+                        headline=headline
                     )
                 else:
                     print("[MONITORING SERVICE] Step 6: Skipping notification (no targets selected)")

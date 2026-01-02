@@ -86,7 +86,8 @@ def test_monitoring(
                 x_username=test_request.x_username,
                 summary=summary_text,
                 tweets_count=len(tweets),
-                topics=test_request.topics
+                topics=test_request.topics,
+                headline=summary_result.get("headline")
             )
             if email_sent:
                 print(f"[API ENDPOINT] ✅ Step 4 complete: Email sent successfully")

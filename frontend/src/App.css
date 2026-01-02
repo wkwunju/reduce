@@ -345,6 +345,8 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .job-info h3 {
@@ -363,6 +365,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  white-space: nowrap;
   padding: 0 0.75rem;
   background-color: #ffffff;
   color: #1a1a1a;
@@ -381,7 +384,27 @@ body {
   font-size: 0.875rem;
   font-weight: 600;
   border: 1px solid;
+  white-space: nowrap;
   height: 32px;
+}
+
+@media (max-width: 520px) {
+  .job-meta {
+    gap: 8px;
+  }
+
+  .badge,
+  .status {
+    font-size: 0.8125rem;
+    height: 28px;
+    padding: 0 0.6rem;
+  }
+
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0.4rem;
+  }
 }
 
 .status.active {
@@ -399,6 +422,7 @@ body {
 .job-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .topics {

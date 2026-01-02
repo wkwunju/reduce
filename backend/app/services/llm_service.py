@@ -1,7 +1,8 @@
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from dotenv import load_dotenv
 import google.generativeai as genai
+from app.utils.summary_headline import build_summary_headline
 
 load_dotenv()
 
@@ -103,18 +104,23 @@ class LLMService:
         if topics and len(topics) > 0:
             topics_str = ", ".join(topics)
             topics_instruction = f"""
-You are an assistant that analyzes tweets for a user.
+You are an analytical assistant producing a high-signal X (Twitter) activity digest.
 
 User interests:
 {topics_str}
 
+Primary goal:
+Help the user quickly understand the dominant themes, key signals, and strategic implications in this account’s tweets, with clear prioritization based on the user’s interests.
+
 Instructions:
-- Clearly separate content related to user interests vs. other content
-- Prioritize tweets directly related to the user interests
-- Prominently feature tweets that explicitly mention these topics
-- Include other tweets only if they provide strong contextual or strategic relevance
-- Focus on key insights, trends, and implications for the user
-- Keep the summary concise and high-signal, write in pyramid principle format if possible
+- FIRST, infer the single dominant theme across all tweets and state it clearly.
+- Use a pyramid principle structure: conclusion first, then supporting points.
+- Treat user interest topics as the primary signal; everything else is secondary.
+- Prominently feature tweets that explicitly mention these topics and explain why they matter.
+- Include non-topic tweets ONLY if they provide strong context, signal amplification, or strategic contrast.
+- Avoid chronological retelling or tweet-by-tweet summaries.
+- Focus on insights, patterns, and implications rather than neutral description.
+- Write concisely, analytically, and with clear prioritization.
 """
         else:
             topics_instruction = ""
@@ -123,20 +129,31 @@ Instructions:
         account_line = f"Account: @{x_username}\n" if x_username else ""
         time_line = f"Time range: {time_range}\n" if time_range else ""
 
-        prompt = f"""Please provide a concise analysis of the following tweets from a user's X (Twitter) account.
+        prompt = f"""Please provide a concise, insight-driven analysis of the following tweets from a user's X (Twitter) account.
 Respond in {language_label}. Use plain text only: no markdown, no bullets, no asterisks.
+First output a headline as:
+Headline: <12-18 words, news-style, no dates or time ranges>
+Then output:
+Summary:
+<2-3 short paragraphs>
 {topics_instruction}
 {account_line}{time_line}Tweets:
 {combined_text}
 
 Please structure the response as:
-1. A brief overview of this user's activity during the time range (who and when).
-2. Core content related to the user's interest topics: {topics_str}.
-3. Other notable content outside those topics.
+1. One-sentence executive summary stating the dominant theme or signal of this account’s activity during the time range.
+2. Core insights related to the user's interest topics: {topics_str}, explaining what these tweets indicate or imply, with supporting evidence.
+3. Secondary or non-topic content, briefly summarized and clearly deprioritized.
+
+Guidelines:
+- Lead with judgment, not description.
+- Do not retell tweets; synthesize patterns and implications.
+- Treat user-interest topics as primary signal and everything else as secondary context.
 
 Make sure the analysis explicitly references the account and time range and is grounded in the tweets provided above.
+Keep the summary concise (2–3 short paragraphs). If non-topic content dominates engagement but not strategic relevance, explicitly label it as high-engagement but low-signal.
+"""
 
-Keep the summary concise (2-3 paragraphs) and make sure to highlight content related to the user's topics of interest."""
         
         print(f"[LLM SERVICE] Prompt length: {len(prompt)} characters")
         print(f"[LLM SERVICE] Making API call to {self.provider}...")
@@ -148,14 +165,21 @@ Keep the summary concise (2-3 paragraphs) and make sure to highlight content rel
                 print(f"[LLM SERVICE] ✅ Gemini response received")
                 print(f"[LLM SERVICE] Response type: {type(response)}")
                 if hasattr(response, 'text'):
-                    summary = response.text
+                    summary_text = response.text
                     usage = self._extract_gemini_usage(response)
+                    headline, summary = self._extract_headline_and_summary(summary_text)
+                    if not headline:
+                        headline = build_summary_headline(summary)
                     print(f"[LLM SERVICE] Summary length: {len(summary)} characters")
                     print(f"[LLM SERVICE] Summary preview: {summary[:200]}...")
-                    return {"summary": summary, "usage": usage}
+                    return {"summary": summary, "headline": headline, "usage": usage}
                 else:
                     print(f"[LLM SERVICE] ⚠️  Response object structure: {dir(response)}")
-                    return {"summary": str(response), "usage": {"input_tokens": 0, "output_tokens": 0}}
+                    raw_text = str(response)
+                    headline, summary = self._extract_headline_and_summary(raw_text)
+                    if not headline:
+                        headline = build_summary_headline(summary)
+                    return {"summary": summary, "headline": headline, "usage": {"input_tokens": 0, "output_tokens": 0}}
             elif self.provider == "openai":
                 print("[LLM SERVICE] Using OpenAI API...")
                 import openai
@@ -168,13 +192,16 @@ Keep the summary concise (2-3 paragraphs) and make sure to highlight content rel
                     ]
                 )
                 print(f"[LLM SERVICE] ✅ OpenAI response received")
-                summary = response.choices[0].message.content
+                raw_text = response.choices[0].message.content
                 usage = {
                     "input_tokens": getattr(response.usage, "prompt_tokens", 0),
                     "output_tokens": getattr(response.usage, "completion_tokens", 0)
                 }
+                headline, summary = self._extract_headline_and_summary(raw_text)
+                if not headline:
+                    headline = build_summary_headline(summary)
                 print(f"[LLM SERVICE] Summary length: {len(summary)} characters")
-                return {"summary": summary, "usage": usage}
+                return {"summary": summary, "headline": headline, "usage": usage}
         except Exception as e:
             error_msg = f"Error generating summary: {str(e)}"
             print(f"[LLM SERVICE] ❌ {error_msg}")
@@ -192,3 +219,25 @@ Keep the summary concise (2-3 paragraphs) and make sure to highlight content rel
             usage["input_tokens"] = getattr(usage_meta, "prompt_token_count", 0)
             usage["output_tokens"] = getattr(usage_meta, "candidates_token_count", 0)
         return usage
+
+    def _extract_headline_and_summary(self, text: str) -> Tuple[Optional[str], str]:
+        if not text:
+            return None, ""
+        headline = None
+        summary_lines = []
+        lines = text.splitlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            if line.lower().startswith("headline:"):
+                headline = line.split(":", 1)[1].strip()
+            elif line.lower().startswith("summary:"):
+                remainder = line.split(":", 1)[1].strip()
+                if remainder:
+                    summary_lines.append(remainder)
+                summary_lines.extend(lines[i + 1 :])
+                break
+            i += 1
+        if not summary_lines:
+            return headline, text.strip()
+        return headline, "\n".join(summary_lines).strip()

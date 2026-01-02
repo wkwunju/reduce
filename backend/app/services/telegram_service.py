@@ -33,15 +33,19 @@ class TelegramService:
         summary: str,
         tweets_count: int,
         topics: Optional[list],
-        time_range: Optional[str]
+        time_range: Optional[str],
+        headline: Optional[str] = None
     ) -> str:
         topics_line = f"Topics: {', '.join(topics)}" if topics else "Topics: (none)"
         time_line = f"Time range: {time_range}" if time_range else "Time range: (n/a)"
+        headline_line = f"XTrack Flash: {headline}\n" if headline else ""
         return (
-            "XTrack Summary\n"
+            f"{headline_line}"
+            f"{summary}\n\n"
+            "Input Details\n"
             f"Account: @{x_username}\n"
             f"{time_line}\n"
             f"Tweets analyzed: {tweets_count}\n"
             f"{topics_line}\n\n"
-            f"{summary}"
+            "More: https://xtrack.ai"
         )

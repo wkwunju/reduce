@@ -106,14 +106,16 @@ class NotificationService:
         topics: Optional[list],
         time_range: Optional[str],
         target_id: Optional[int] = None,
-        target_ids: Optional[List[int]] = None
+        target_ids: Optional[List[int]] = None,
+        headline: Optional[str] = None
     ) -> bool:
         message = self.telegram_service.build_summary_message(
             x_username=x_username,
             summary=summary,
             tweets_count=tweets_count,
             topics=topics,
-            time_range=time_range
+            time_range=time_range,
+            headline=headline
         )
         effective_target_ids = target_ids or ([target_id] if target_id else [])
         if effective_target_ids:
