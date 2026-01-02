@@ -109,7 +109,7 @@ Account: @{x_username}
 Tweets analyzed: {tweets_count}
 {topics_text}
 ---
-More: https://xtrack.ai
+More: https://www.ai-productivity.tools/
 """
         
         generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -143,7 +143,7 @@ More: https://xtrack.ai
         </div>
 
         <div style="background-color: #f5f5f5; padding: 16px 20px; text-align: center; border-top: 1px solid #e5e5e5;">
-            <a href="https://xtrack.ai" style="color: #1a1a1a; font-size: 12px; text-decoration: none;">More on XTrack →</a>
+            <a href="https://www.ai-productivity.tools/" style="color: #1a1a1a; font-size: 12px; text-decoration: none;">More on XTrack →</a>
         </div>
     </div>
 </body>

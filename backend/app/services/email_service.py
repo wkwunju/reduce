@@ -118,7 +118,7 @@ Account: @{x_username}
 Tweets analyzed: {tweets_count}
 {topics_text}
 ---
-More: https://xtrack.ai
+More: https://www.ai-productivity.tools/
 """
         
         generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -134,7 +134,7 @@ More: https://xtrack.ai
     <p><strong>Tweets analyzed:</strong> {tweets_count}</p>
     {f'<p><strong>Topics of interest:</strong> {", ".join(topics)}</p>' if topics else ''}
     <hr>
-    <p><a href="https://xtrack.ai">More on XTrack →</a></p>
+    <p><a href="https://www.ai-productivity.tools/">More on XTrack →</a></p>
 </body>
 </html>"""
         

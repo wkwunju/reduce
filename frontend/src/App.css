@@ -117,6 +117,51 @@ body {
   font-weight: 400;
 }
 
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-tagline {
+  font-size: 0.75rem;
+  color: #666666;
+  white-space: nowrap;
+  overflow: hidden;
+  border-right: 1px solid #1a1a1a;
+  width: 0;
+  animation: tagline-typing 2.2s steps(28, end) 0.4s forwards,
+    tagline-caret 800ms step-end 3,
+    tagline-hide 0s 2.8s forwards;
+}
+
+@keyframes tagline-typing {
+  to {
+    width: 14.5rem;
+  }
+}
+
+
+@keyframes tagline-caret {
+  50% {
+    border-color: transparent;
+  }
+}
+
+@keyframes tagline-hide {
+  to {
+    border-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-tagline {
+    width: auto;
+    border-right: none;
+    animation: none;
+  }
+}
+
 /* Cards */
 .card {
   background: #ffffff;
@@ -618,6 +663,7 @@ body {
 .form-group select {
   width: 100%;
   padding: 0.5rem 0.75rem;
+  padding-right: 2rem;
   border: 1px solid #d1d1d1;
   border-radius: 8px;
   font-size: 1rem;

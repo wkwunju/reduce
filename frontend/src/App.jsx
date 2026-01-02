@@ -398,11 +398,11 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                     <div className="form-group">
                       <label>
                         <User size={16} />
-                        X Username (without @)
+                        X Username
                       </label>
                       <input
                         type="text"
-                        placeholder="elonmusk"
+                        placeholder="elonmusk (without @)"
                         value={newJob.x_username}
                         onChange={(e) => setNewJob({ ...newJob, x_username: e.target.value })}
                       />
@@ -424,11 +424,11 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                     <div className="form-group">
                       <label>
                         <Hash size={16} />
-                        Topics (comma-separated)
+                        Topics
                       </label>
                       <input
                         type="text"
-                        placeholder="AI, technology, space"
+                        placeholder="AI, technology, space (comma-separated)"
                         value={newJob.topics}
                         onChange={(e) => setNewJob({ ...newJob, topics: e.target.value })}
                       />
@@ -675,17 +675,17 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
             {activeView === 'playground' && (
               <div className="test-container">
                 <div className="jobs-header">
-                  <h2>Play without creating a agentic task</h2>
+                  <h2>Play without creating a task</h2>
                 </div>
                 <div className="card test-card">
                   <div className="form-group">
                     <label>
                       <User size={16} />
-                      X Username (without @)
+                      X Username
                     </label>
                     <input
                       type="text"
-                      placeholder="elonmusk"
+                      placeholder="elonmusk (without @)"
                       value={testData.x_username}
                       onChange={(e) => setTestData({ ...testData, x_username: e.target.value })}
                     />
@@ -710,11 +710,11 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                   <div className="form-group">
                     <label>
                       <Hash size={16} />
-                      Topics (comma-separated, optional)
+                      Topics
                     </label>
                     <input
                       type="text"
-                      placeholder="AI, technology, space"
+                      placeholder="AI, technology, space (comma-separated)"
                       value={testData.topics}
                       onChange={(e) => setTestData({ ...testData, topics: e.target.value })}
                     />

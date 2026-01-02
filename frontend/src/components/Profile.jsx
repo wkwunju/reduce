@@ -16,6 +16,8 @@ export default function Profile({ onClose }) {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [telegramLoading, setTelegramLoading] = useState(false);
+  const [showPasswordFields, setShowPasswordFields] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -49,6 +51,8 @@ export default function Profile({ onClose }) {
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setIsDirty(false);
+      setShowPasswordFields(false);
     } catch (err) {
       setError(err.response?.data?.detail || 'Update failed.');
     } finally {
@@ -69,6 +73,7 @@ export default function Profile({ onClose }) {
     setError('');
     setSuccess('');
     setTelegramLoading(true);
+    setIsDirty(true);
     try {
       const response = await axios.post(`${API_BASE}/notifications/telegram/bind-token`);
       setTelegramToken(response.data.token);
@@ -84,6 +89,7 @@ export default function Profile({ onClose }) {
     setError('');
     setSuccess('');
     setTelegramLoading(true);
+    setIsDirty(true);
     try {
       await axios.patch(`${API_BASE}/notifications/targets/${targetId}/default`);
       await loadTelegramTargets();
@@ -118,13 +124,13 @@ export default function Profile({ onClose }) {
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
       }}>
         <div style={{
-          padding: '20px',
+          padding: '12px 20px',
           borderBottom: '1px solid #e0e0e0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Password</h2>
+          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Setting</h2>
           <button
             onClick={onClose}
             style={{
@@ -319,105 +325,149 @@ export default function Profile({ onClose }) {
               )}
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#333',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}>
-                Current Password
-              </label>
-              <input
-                type="password"
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-                required
+            {!showPasswordFields && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordFields(true);
+                  setIsDirty(true);
+                }}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '4px',
+                  border: '1px solid #1a1a1a',
+                  background: '#ffffff',
+                  color: '#1a1a1a',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  marginBottom: '20px'
+                }}
+              >
+                Change Password
+              </button>
+            )}
+
+            {showPasswordFields && (
+              <>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    color: '#333',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}>
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => {
+                      setOldPassword(e.target.value);
+                      setIsDirty(true);
+                    }}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box'
+                    }}
+                    placeholder="Enter current password"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    color: '#333',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}>
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setIsDirty(true);
+                    }}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box'
+                    }}
+                    placeholder="At least 8 characters"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    color: '#333',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}>
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setIsDirty(true);
+                    }}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box'
+                    }}
+                    placeholder="Re-enter new password"
+                  />
+                </div>
+              </>
+            )}
+
+
+            {isDirty && (
+              <button
+                type="submit"
+                disabled={loading}
+                onClick={(e) => {
+                  if (!showPasswordFields) {
+                    e.preventDefault();
+                    onClose();
+                  }
+                }}
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #ddd',
+                  background: '#000',
+                  color: '#fff',
+                  border: 'none',
                   borderRadius: '4px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1
                 }}
-                placeholder="Enter current password"
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#333',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}>
-                New Password
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-                placeholder="At least 8 characters"
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#333',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}>
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-                placeholder="Re-enter new password"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: '#000',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1
-              }}
-            >
-              {loading ? 'Changing...' : 'Change Password'}
-            </button>
+              >
+                {loading ? 'Saving...' : 'Save'}
+              </button>
+            )}
           </form>
         </div>
       </div>

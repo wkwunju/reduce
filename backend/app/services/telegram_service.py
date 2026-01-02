@@ -47,5 +47,5 @@ class TelegramService:
             f"{time_line}\n"
             f"Tweets analyzed: {tweets_count}\n"
             f"{topics_line}\n\n"
-            "More: https://xtrack.ai"
+            "More: https://www.ai-productivity.tools/"
         )

@@ -15,7 +15,7 @@ export default function Navbar({ onShowAuth, onToggleMenu, onShowProfile }) {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <div>
+        <div className="brand">
           <div style={{
             fontSize: '20px',
             fontWeight: '600',
@@ -24,6 +24,7 @@ export default function Navbar({ onShowAuth, onToggleMenu, onShowProfile }) {
           }}>
             XTrack
           </div>
+          <div className="brand-tagline">Only the signal. No noise.</div>
         </div>
 
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -98,7 +99,7 @@ export default function Navbar({ onShowAuth, onToggleMenu, onShowProfile }) {
                     onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
                     onMouseLeave={(e) => e.target.style.background = 'none'}
                   >
-                    Password
+                    Setting
                   </button>
                   <button
                     onClick={() => {
