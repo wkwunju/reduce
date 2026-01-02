@@ -58,6 +58,19 @@ def set_default_notification_target(
     return {"status": "ok"}
 
 
+@router.delete("/targets/{target_id}")
+def delete_notification_target(
+    target_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    service = NotificationService(db)
+    ok = service.delete_target(current_user.id, target_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Notification target not found")
+    return {"status": "ok"}
+
+
 @router.post("/telegram/webhook")
 async def telegram_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.json()

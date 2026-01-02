@@ -90,6 +90,30 @@ class NotificationService:
         self.db.commit()
         return target
 
+    def delete_target(self, user_id: int, target_id: int) -> bool:
+        target = self.db.query(NotificationTarget).filter(
+            NotificationTarget.id == target_id,
+            NotificationTarget.user_id == user_id
+        ).first()
+        if not target:
+            return False
+
+        was_default = target.is_default
+        channel = target.channel
+        self.db.delete(target)
+        self.db.commit()
+
+        if was_default and channel:
+            replacement = self.db.query(NotificationTarget).filter(
+                NotificationTarget.user_id == user_id,
+                NotificationTarget.channel == channel
+            ).order_by(NotificationTarget.created_at.desc()).first()
+            if replacement:
+                replacement.is_default = True
+                self.db.commit()
+
+        return True
+
     def get_default_target(self, user_id: int, channel: NotificationChannel) -> Optional[NotificationTarget]:
         return self.db.query(NotificationTarget).filter(
             NotificationTarget.user_id == user_id,

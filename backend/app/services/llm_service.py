@@ -70,6 +70,8 @@ class LLMService:
         tweet_texts = []
         for idx, tweet in enumerate(tweets):
             tweet_str = f"Tweet: {tweet.get('text', '')}\n"
+            tweet_str += f"ID: {tweet.get('tweet_id', '')}\n"
+            tweet_str += f"URL: {tweet.get('url', '')}\n"
             tweet_str += f"Likes: {tweet.get('likes', 0)}, Reposts: {tweet.get('reposts', 0)}\n"
             tweet_str += f"Time: {tweet.get('timestamp', 'Unknown')}\n"
             tweet_texts.append(tweet_str)
@@ -130,12 +132,16 @@ Instructions:
         time_line = f"Time range: {time_range}\n" if time_range else ""
 
         prompt = f"""Please provide a concise, insight-driven analysis of the following tweets from a user's X (Twitter) account.
-Respond in {language_label}. Use plain text only: no markdown, no bullets, no asterisks.
+Respond in {language_label}. Use plain text only: no markdown or asterisks.
 First output a headline as:
 Headline: <12-18 words, news-style, no dates or time ranges>
 Then output:
 Summary:
 <2-3 short paragraphs>
+After the summary paragraphs, add:
+Relevant Tweets:
+1) <short quote or paraphrase> — <URL>
+Include up to 3 tweets that are most relevant to the topics. Each line must include a URL from the provided tweets.
 {topics_instruction}
 {account_line}{time_line}Tweets:
 {combined_text}

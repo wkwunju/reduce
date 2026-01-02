@@ -52,6 +52,14 @@ This guide explains how to set up Gmail API with OAuth 2.0 for sending emails fr
 5. Click **"Create"**
 6. Click **"OK"** on the success dialog
 
+### Redirect URIs (Desktop App)
+For a desktop OAuth client, add these redirect URIs:
+```
+http://localhost
+http://localhost:8080/
+http://localhost:8090/
+```
+
 ### Step 5: Download Credentials
 
 1. In the "OAuth 2.0 Client IDs" section, find your newly created client
@@ -218,4 +226,3 @@ For production:
 - [Gmail API Documentation](https://developers.google.com/gmail/api)
 - [OAuth 2.0 for Desktop Apps](https://developers.google.com/identity/protocols/oauth2/native-app)
 - [Gmail API Python Quickstart](https://developers.google.com/gmail/api/quickstart/python)
-

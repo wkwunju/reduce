@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Unlink } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -96,6 +96,22 @@ export default function Profile({ onClose }) {
       setSuccess('Default Telegram target updated.');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update default target.');
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  const handleDeleteTarget = async (targetId) => {
+    setError('');
+    setSuccess('');
+    setTelegramLoading(true);
+    setIsDirty(true);
+    try {
+      await axios.delete(`${API_BASE}/notifications/targets/${targetId}`);
+      await loadTelegramTargets();
+      setSuccess('Telegram target unlinked.');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to unlink Telegram target.');
     } finally {
       setTelegramLoading(false);
     }
@@ -265,23 +281,45 @@ export default function Profile({ onClose }) {
                         {target.metadata?.title || target.destination}
                         {target.is_default ? ' (default)' : ''}
                       </span>
-                      {!target.is_default && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {!target.is_default && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetDefaultTarget(target.id)}
+                            disabled={telegramLoading}
+                            style={{
+                              border: 'none',
+                              background: 'none',
+                              color: '#1a1a1a',
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              fontSize: '13px'
+                            }}
+                          >
+                            Set default
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => handleSetDefaultTarget(target.id)}
+                          onClick={() => handleDeleteTarget(target.id)}
                           disabled={telegramLoading}
+                          title="Unlink"
                           style={{
-                            border: 'none',
-                            background: 'none',
-                            color: '#1a1a1a',
-                            cursor: 'pointer',
-                            textDecoration: 'underline',
-                            fontSize: '13px'
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '4px',
+                            border: '1px solid #e0e0e0',
+                            background: '#ffffff',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: telegramLoading ? 'not-allowed' : 'pointer',
+                            padding: 0
                           }}
                         >
-                          Set default
+                          <Unlink size={12} />
                         </button>
-                      )}
+                      </div>
                     </div>
                   ))}
                 </div>
