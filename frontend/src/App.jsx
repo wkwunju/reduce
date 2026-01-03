@@ -8,6 +8,10 @@ import Profile from './components/Profile'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const PLAYGROUND_RUN_LIMIT = 10
+const PLAYGROUND_WINDOW_MS = 24 * 60 * 60 * 1000
+const PLAYGROUND_STORAGE_KEY = 'xtrack_playground_runs'
+const MAX_TASKS_PER_USER = 5
 
 function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
   const { user } = useAuth();
@@ -39,6 +43,34 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [expandedExecutions, setExpandedExecutions] = useState({})
 
+  const loadPlaygroundRuns = () => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = localStorage.getItem(PLAYGROUND_STORAGE_KEY)
+      const parsed = raw ? JSON.parse(raw) : []
+      if (!Array.isArray(parsed)) return []
+      const cutoff = Date.now() - PLAYGROUND_WINDOW_MS
+      return parsed.filter((timestamp) => typeof timestamp === 'number' && timestamp >= cutoff)
+    } catch (error) {
+      return []
+    }
+  }
+
+  const getPlaygroundRemaining = () => {
+    const recentRuns = loadPlaygroundRuns()
+    return Math.max(0, PLAYGROUND_RUN_LIMIT - recentRuns.length)
+  }
+
+  const recordPlaygroundRun = () => {
+    const recentRuns = loadPlaygroundRuns()
+    const nextRuns = [...recentRuns, Date.now()]
+    try {
+      localStorage.setItem(PLAYGROUND_STORAGE_KEY, JSON.stringify(nextRuns))
+    } catch (error) {
+      // Ignore localStorage write failures.
+    }
+  }
+
   const normalizeSummary = (text = '') =>
     text
       .replace(/\*/g, '')
@@ -66,6 +98,12 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
     }
   }, [jobs])
 
+  useEffect(() => {
+    if (jobs.length >= MAX_TASKS_PER_USER && showAddJob) {
+      setShowAddJob(false)
+    }
+  }, [jobs, showAddJob])
+
   const loadJobs = async () => {
     try {
       const response = await axios.get(`${API_BASE}/jobs/`)
@@ -79,6 +117,11 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
     if (!user) {
       alert('Please login or register to create scheduled tasks')
       setShowAuthModal(true)
+      return
+    }
+
+    if (jobs.length >= MAX_TASKS_PER_USER) {
+      alert('You have reached the maximum of 5 scheduled tasks.')
       return
     }
 
@@ -294,6 +337,14 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
       alert('Please enter an X username')
       return
     }
+
+    const remainingRuns = getPlaygroundRemaining()
+    if (remainingRuns <= 0) {
+      alert('Playground limit reached. Please try again later.')
+      return
+    }
+
+    recordPlaygroundRun()
     
     setTestLoading(true)
     setTestResult(null)
@@ -344,6 +395,8 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
     { value: 'nl', label: 'Nederlands' }
   ]
 
+  const playgroundRemaining = getPlaygroundRemaining()
+
   return (
     <>
       <Navbar
@@ -384,8 +437,18 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
               <div className="jobs-container">
                 {(jobs.length > 0 || showAddJob) && (
                   <div className="jobs-header">
-                    <h2>Agentic Tasks</h2>
-                    <button className="btn-primary" onClick={() => setShowAddJob(!showAddJob)}>
+                    <div className="section-title">
+                      <h2>Agentic Tasks</h2>
+                      <div className="section-hint">
+                        Beta limit: up to 5 scheduled tasks per account.
+                      </div>
+                    </div>
+                    <button
+                      className="btn-primary"
+                      onClick={() => setShowAddJob(!showAddJob)}
+                      disabled={jobs.length >= MAX_TASKS_PER_USER}
+                      title={jobs.length >= MAX_TASKS_PER_USER ? 'Maximum 5 tasks allowed.' : undefined}
+                    >
                       <Plus size={18} />
                       Add Task
                     </button>
@@ -675,7 +738,12 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
             {activeView === 'playground' && (
               <div className="test-container">
                 <div className="jobs-header">
-                  <h2>Play without creating a task</h2>
+                  <div className="section-title">
+                    <h2>Play without creating a task</h2>
+                    <div className="section-hint">
+                      Beta limit: up to 10 playground runs per 24 hours on this device.
+                    </div>
+                  </div>
                 </div>
                 <div className="card test-card">
                   <div className="form-group">
@@ -734,12 +802,12 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                   </div>
 
                   <div className="form-actions">
-                    <button 
-                      className="btn-primary" 
+                    <button
+                      className="btn-primary"
                       onClick={runTest}
-                      disabled={testLoading}
+                      disabled={testLoading || playgroundRemaining <= 0}
                     >
-                      {testLoading ? 'Running...' : 'Run'}
+                      {testLoading ? 'Running...' : (playgroundRemaining <= 0 ? 'Limit Reached' : 'Run')}
                     </button>
                   </div>
 

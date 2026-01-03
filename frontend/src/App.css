@@ -376,6 +376,17 @@ body {
   letter-spacing: -0.02em;
 }
 
+.section-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-hint {
+  font-size: 0.85rem;
+  color: #6b6b6b;
+}
+
 /* Job Card */
 .job-card {
   transition: border-color 0.2s;
