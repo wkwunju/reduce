@@ -50,6 +50,7 @@ export default function Navbar({ onShowAuth, onToggleMenu, onShowProfile }) {
             <>
               <button
                 onClick={() => setShowMenu(!showMenu)}
+                className="account-button"
                 style={{
                   background: '#f5f5f5',
                   border: '1px solid #e0e0e0',
@@ -62,7 +63,10 @@ export default function Navbar({ onShowAuth, onToggleMenu, onShowProfile }) {
                   gap: '8px'
                 }}
               >
-                <span>{user.email}</span>
+                <span className="account-email">{user.email}</span>
+                <span className="account-initial" aria-hidden="true">
+                  {(user.email || 'U').trim().charAt(0).toUpperCase()}
+                </span>
                 <span style={{ fontSize: '12px' }}>▼</span>
               </button>
 
@@ -137,7 +141,7 @@ export default function Navbar({ onShowAuth, onToggleMenu, onShowProfile }) {
                 fontWeight: '500'
               }}
             >
-              Login / Register
+              Login
             </button>
           )}
         </div>

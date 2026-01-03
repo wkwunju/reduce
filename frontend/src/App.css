@@ -387,6 +387,25 @@ body {
   color: #6b6b6b;
 }
 
+.account-button .account-initial {
+  display: none;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .account-button {
+    padding: 8px 10px;
+  }
+
+  .account-button .account-email {
+    display: none;
+  }
+
+  .account-button .account-initial {
+    display: inline-flex;
+  }
+}
+
 /* Job Card */
 .job-card {
   transition: border-color 0.2s;
