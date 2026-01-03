@@ -83,7 +83,7 @@ body {
   min-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 32px 32px 32px;
+  padding: 0 16px 16px 16px;
 }
 
 .app {
@@ -168,7 +168,8 @@ body {
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  border: 1px solid #e5e5e5;
+  border: 1px solid #efefef;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
   transition: border-color 0.2s;
 }
 
@@ -348,10 +349,26 @@ body {
     margin-right: -20px;
     padding-left: 20px;
     padding-right: 20px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
 
   .mobile-menu-button {
     display: inline-flex;
+  }
+
+  .card {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .add-task-cta {
+    width: 100%;
+    justify-content: center;
+    position: sticky;
+    bottom: 16px;
+    z-index: 2;
   }
 }
 
@@ -520,7 +537,7 @@ body {
 
 /* Forms */
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .form-group label {
@@ -558,7 +575,7 @@ body {
   line-height: 1.4;
   text-align: left;
   padding: 10px 12px;
-  border: 1px solid #e6e6e6;
+  border: 1px solid #ededed;
   border-radius: 10px;
   background-color: #ffffff;
 }
@@ -569,7 +586,7 @@ body {
   align-items: center;
   gap: 8px;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
   font-weight: 400;
 }
 
@@ -633,7 +650,7 @@ body {
   line-height: 1.4;
   text-align: left;
   padding: 10px 12px;
-  border: 1px solid #e6e6e6;
+  border: 1px solid #ededed;
   border-radius: 10px;
   background-color: #ffffff;
 }
@@ -694,7 +711,7 @@ body {
   width: 100%;
   padding: 0.5rem 0.75rem;
   padding-right: 2rem;
-  border: 1px solid #d1d1d1;
+  border: 1px solid #e3e3e3;
   border-radius: 8px;
   font-size: 1rem;
   background-color: #ffffff;
@@ -717,10 +734,16 @@ body {
   font-size: 0.875rem;
 }
 
+.form-helper {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #6b6b6b;
+}
+
 .form-actions {
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-top: 2.5rem;
 }
 
@@ -864,7 +887,7 @@ body {
 /* Test Section */
 .test-card {
   border: none;
-  padding: 0;
+  padding: 1.5rem;
   background: transparent;
 }
 

@@ -444,7 +444,7 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                       </div>
                     </div>
                     <button
-                      className="btn-primary"
+                      className="btn-primary add-task-cta"
                       onClick={() => setShowAddJob(!showAddJob)}
                       disabled={jobs.length >= MAX_TASKS_PER_USER}
                       title={jobs.length >= MAX_TASKS_PER_USER ? 'Maximum 5 tasks allowed.' : undefined}
@@ -739,10 +739,7 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
               <div className="test-container">
                 <div className="jobs-header">
                   <div className="section-title">
-                    <h2>Play without creating a task</h2>
-                    <div className="section-hint">
-                      Beta limit: up to 10 playground runs per 24 hours on this device.
-                    </div>
+                    <h2>Instant summary</h2>
                   </div>
                 </div>
                 <div className="card test-card">
@@ -762,7 +759,7 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                   <div className="form-group">
                     <label>
                       <Clock size={16} />
-                      Hours Back (time range)
+                      Time range
                     </label>
                     <input
                       type="number"
@@ -809,6 +806,9 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                     >
                       {testLoading ? 'Running...' : (playgroundRemaining <= 0 ? 'Limit Reached' : 'Run')}
                     </button>
+                  </div>
+                  <div className="form-helper">
+                    Beta limit: up to 10 playground runs per 24 hours on this device.
                   </div>
 
                   {testResult && (
