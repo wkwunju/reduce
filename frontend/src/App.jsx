@@ -42,6 +42,9 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
   const [activeView, setActiveView] = useState('playground') // 'playground' or 'tasks'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [expandedExecutions, setExpandedExecutions] = useState({})
+  const [showLanding, setShowLanding] = useState(true)
+  const [useCaseIndex, setUseCaseIndex] = useState(0)
+  const [useCasePhase, setUseCasePhase] = useState('in')
 
   const loadPlaygroundRuns = () => {
     if (typeof window === 'undefined') return []
@@ -97,6 +100,49 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
       preloadExecutionCounts(jobs)
     }
   }, [jobs])
+
+  useEffect(() => {
+    if (!showLanding) {
+      document.body.style.overflow = 'auto'
+      return
+    }
+
+    document.body.style.overflow = 'hidden'
+    let touchStartY = 0
+
+    const handleWheel = (event) => {
+      if (event.deltaY > 40) {
+        event.preventDefault()
+        enterApp()
+      }
+    }
+
+    const handleTouchStart = (event) => {
+      touchStartY = event.touches[0]?.clientY || 0
+    }
+
+    const handleTouchMove = (event) => {
+      const currentY = event.touches[0]?.clientY || 0
+      if (touchStartY - currentY > 60) {
+        enterApp()
+      }
+    }
+
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+
+    return () => {
+      document.body.style.overflow = 'auto'
+      window.removeEventListener('wheel', handleWheel)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove', handleTouchMove)
+    }
+  }, [showLanding])
+
+  const enterApp = () => {
+    setShowLanding(false)
+  }
 
   useEffect(() => {
     if (jobs.length >= MAX_TASKS_PER_USER && showAddJob) {
@@ -397,6 +443,76 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
 
   const playgroundRemaining = getPlaygroundRemaining()
 
+  const useCases = [
+    {
+      title: 'Crypto Watchlist',
+      description: 'Track the right crypto feeds and never miss an airdrop.',
+      highlight: 'Get airdrop alerts without the noise.'
+    },
+    {
+      title: 'Finance Advisor Pulse',
+      description: 'Track your favorite advisors and catch key market moves early.',
+      highlight: 'Stay ahead of the tape.'
+    },
+    {
+      title: 'Breaking News + KOL Tracker',
+      description: 'Track breaking news and key voices for faster decisions on Polymarket.',
+      highlight: 'Speed wins markets.'
+    },
+    {
+      title: 'Brand + Competitor Radar',
+      description: 'Monitor signals around your brand and competitors in real time.',
+      highlight: 'Know the narrative first.'
+    }
+  ]
+
+  useEffect(() => {
+    if (!showLanding) return
+    const interval = setInterval(() => {
+      setUseCasePhase('out')
+      setTimeout(() => {
+        setUseCaseIndex((prev) => (prev + 1) % useCases.length)
+        setUseCasePhase('in')
+      }, 450)
+    }, 5600)
+    return () => clearInterval(interval)
+  }, [showLanding, useCases.length])
+
+  if (showLanding) {
+    return (
+      <div className="landing-page">
+        <div className="landing-hero">
+          <div className="landing-brand">XTrack</div>
+          <div className="landing-tagline">Only signals, no noise</div>
+          <div className="landing-copy">
+            Turn X into instant, high-signal briefs. Follow what matters and skip the scroll.
+          </div>
+          <div className="landing-cta">
+            <button className="btn-primary landing-button" onClick={enterApp}>
+              Enter App
+            </button>
+          </div>
+        </div>
+
+        <div className="landing-showcase">
+          <div className={`use-case-card use-case-${useCasePhase}`} key={useCaseIndex}>
+            <div className="use-case-title">{useCases[useCaseIndex].title}</div>
+            <div className="use-case-description">{useCases[useCaseIndex].description}</div>
+            <div className="use-case-highlight">{useCases[useCaseIndex].highlight}</div>
+          </div>
+        </div>
+        <div className="landing-scroll-indicator" aria-hidden="true">
+          <div className="landing-dots">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="landing-arrow" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       <Navbar
@@ -465,7 +581,7 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                       </label>
                       <input
                         type="text"
-                        placeholder="elonmusk (without @)"
+                        placeholder="elonmusk, a16z (comma-separated, no @)"
                         value={newJob.x_username}
                         onChange={(e) => setNewJob({ ...newJob, x_username: e.target.value })}
                       />
@@ -750,7 +866,7 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                     </label>
                     <input
                       type="text"
-                      placeholder="elonmusk (without @)"
+                      placeholder="elonmusk, a16z (comma-separated, no @)"
                       value={testData.x_username}
                       onChange={(e) => setTestData({ ...testData, x_username: e.target.value })}
                     />
@@ -815,7 +931,15 @@ function MainApp({ showAuthModal, setShowAuthModal, onShowProfile }) {
                     <div className="test-result">
                       <h4>Test Results</h4>
                       <div className="test-meta">
-                        <span><strong>Username:</strong> @{testResult.x_username}</span>
+                        <span>
+                          <strong>{testResult.x_username?.includes(',') ? 'Accounts:' : 'Account:'}</strong>{' '}
+                          {(testResult.x_username || '')
+                            .split(',')
+                            .map((name) => name.trim())
+                            .filter((name) => name)
+                            .map((name) => `@${name.replace(/^@/, '')}`)
+                            .join(', ')}
+                        </span>
                         <span><strong>Tweets Found:</strong> {testResult.tweets_found}</span>
                         <span><strong>Time Range:</strong> Last {testResult.hours_back} hours</span>
                         {testResult.topics && testResult.topics.length > 0 && (

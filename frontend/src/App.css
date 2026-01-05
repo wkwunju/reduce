@@ -404,6 +404,183 @@ body {
   color: #6b6b6b;
 }
 
+/* Landing Page */
+.landing-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+  padding: 48px 64px;
+  background: radial-gradient(circle at top left, #f7f7f7, #ffffff);
+  align-items: center;
+  position: relative;
+}
+
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.landing-brand {
+  font-size: 2.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #111111;
+}
+
+.landing-tagline {
+  font-size: 1rem;
+  color: #5f5f5f;
+}
+
+.landing-copy {
+  font-size: 1.125rem;
+  color: #1f1f1f;
+  max-width: 420px;
+}
+
+.landing-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.landing-button {
+  padding: 12px 24px;
+  font-size: 1rem;
+}
+
+.landing-hint {
+  font-size: 0.9rem;
+  color: #6b6b6b;
+}
+
+.landing-showcase {
+  position: relative;
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+}
+
+.use-case-card {
+  width: min(420px, 100%);
+  padding: 28px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.55s ease, opacity 0.55s ease;
+}
+
+.use-case-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111111;
+}
+
+.use-case-description {
+  font-size: 1rem;
+  color: #3a3a3a;
+}
+
+.use-case-highlight {
+  font-size: 0.95rem;
+  color: #6b6b6b;
+}
+
+.use-case-in {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.use-case-out {
+  opacity: 0;
+  transform: translateX(-90px);
+}
+
+.landing-scroll-indicator {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #7a7a7a;
+  animation: scroll-pulse 1.6s ease-in-out infinite;
+}
+
+.landing-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.landing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  border: 1px dashed #9a9a9a;
+}
+
+.landing-arrow {
+  width: 18px;
+  height: 18px;
+  border-left: 2px solid #9a9a9a;
+  border-bottom: 2px solid #9a9a9a;
+  transform: rotate(-45deg);
+}
+
+@keyframes scroll-pulse {
+  0% {
+    opacity: 0.4;
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(6px);
+  }
+  100% {
+    opacity: 0.4;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (max-width: 960px) {
+  .landing-page {
+    grid-template-columns: 1fr;
+    padding: 40px 24px;
+  }
+
+  .landing-showcase {
+    min-height: 240px;
+  }
+
+  .landing-cta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-page {
+    padding: 32px 20px;
+  }
+
+  .landing-brand {
+    font-size: 2.25rem;
+  }
+
+  .landing-copy {
+    font-size: 1rem;
+  }
+}
+
 .account-button .account-initial {
   display: none;
   font-weight: 600;

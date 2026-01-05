@@ -24,7 +24,7 @@ export default function Navbar({ onShowAuth, onToggleMenu, onShowProfile }) {
           }}>
             XTrack
           </div>
-          <div className="brand-tagline">Only the signal. No noise.</div>
+          <div className="brand-tagline">Only signals, no noise</div>
         </div>
 
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '12px' }}>
