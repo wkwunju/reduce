@@ -26,7 +26,10 @@ class MonitoringService:
         print("\n" + "=" * 80)
         print("[MONITORING SERVICE] Starting job execution")
         print(f"[MONITORING SERVICE] Job ID: {job.get('id')}")
-        print(f"[MONITORING SERVICE] Username: @{job.get('x_username')}")
+        usernames = self._parse_usernames(job.get('x_username'))
+        if not usernames:
+            raise ValueError("No X usernames provided for this job")
+        print(f"[MONITORING SERVICE] Usernames: {', '.join(f'@{name}' for name in usernames)}")
         print(f"[MONITORING SERVICE] Frequency: {job.get('frequency')}")
         print(f"[MONITORING SERVICE] Topics: {job.get('topics', [])}")
         print("=" * 80)
@@ -57,11 +60,17 @@ class MonitoringService:
             
             # Fetch tweets
             print("[MONITORING SERVICE] Step 1: Fetching tweets...")
-            tweets = self.twitter_service.get_user_tweets(
-                username=job["x_username"],
-                since=since,
-                limit=50
-            )
+            tweets = []
+            for username in usernames:
+                account_tweets = self.twitter_service.get_user_tweets(
+                    username=username,
+                    since=since,
+                    limit=50
+                )
+                for tweet in account_tweets:
+                    if not tweet.get("username"):
+                        tweet["username"] = username
+                tweets.extend(account_tweets)
             print(f"[MONITORING SERVICE] ✅ Step 1 complete: {len(tweets)} tweets fetched")
             
             # Note: We don't filter by topics - instead we pass topics to LLM to focus on them
@@ -77,7 +86,7 @@ class MonitoringService:
             summary_result = self.llm_service.summarize_tweets(
                 tweets,
                 topics,
-                x_username=job.get("x_username"),
+                x_username=", ".join(usernames),
                 time_range=time_range,
                 language=job.get("language")
             )
@@ -107,7 +116,7 @@ class MonitoringService:
                 print(f"[MONITORING SERVICE] Step 5: Sending email to {email}...")
                 email_sent = self.email_service.send_summary_email(
                     to_email=email,
-                    x_username=job["x_username"],
+                    x_username=", ".join(usernames),
                     summary=summary_text,
                     tweets_count=len(tweets),
                     topics=topics,
@@ -128,7 +137,7 @@ class MonitoringService:
                     notifier = NotificationService(db)
                     notifier.send_summary(
                         user_id=job["user_id"],
-                        x_username=job["x_username"],
+                        x_username=", ".join(usernames),
                         summary=summary_text,
                         tweets_count=len(tweets),
                         topics=topics,
@@ -174,3 +183,17 @@ class MonitoringService:
         
         delta = frequency_map.get(frequency, timedelta(hours=1))
         return now - delta
+
+    def _parse_usernames(self, raw: Optional[str]) -> list:
+        if not raw:
+            return []
+        if isinstance(raw, (list, tuple)):
+            names = raw
+        else:
+            names = str(raw).split(",")
+        cleaned = []
+        for name in names:
+            cleaned_name = str(name).strip().lstrip("@")
+            if cleaned_name and cleaned_name not in cleaned:
+                cleaned.append(cleaned_name)
+        return cleaned

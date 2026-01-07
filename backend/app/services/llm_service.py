@@ -72,6 +72,8 @@ class LLMService:
             tweet_str = f"Tweet: {tweet.get('text', '')}\n"
             tweet_str += f"ID: {tweet.get('tweet_id', '')}\n"
             tweet_str += f"URL: {tweet.get('url', '')}\n"
+            if tweet.get("username"):
+                tweet_str += f"Account: @{tweet.get('username')}\n"
             tweet_str += f"Likes: {tweet.get('likes', 0)}, Reposts: {tweet.get('reposts', 0)}\n"
             tweet_str += f"Time: {tweet.get('timestamp', 'Unknown')}\n"
             tweet_texts.append(tweet_str)
@@ -128,7 +130,7 @@ Instructions:
             topics_instruction = ""
             topics_str = "general topics"
         
-        account_line = f"Account: @{x_username}\n" if x_username else ""
+        account_line = self._format_account_line(x_username)
         time_line = f"Time range: {time_range}\n" if time_range else ""
 
         prompt = f"""Please provide a concise, insight-driven analysis of the following tweets from a user's X (Twitter) account.
@@ -247,3 +249,16 @@ Keep the summary concise (2–3 short paragraphs). If non-topic content dominate
         if not summary_lines:
             return headline, text.strip()
         return headline, "\n".join(summary_lines).strip()
+
+    def _format_account_line(self, x_username: Optional[str]) -> str:
+        if not x_username:
+            return ""
+        if isinstance(x_username, (list, tuple)):
+            names = [str(name).strip().lstrip("@") for name in x_username if str(name).strip()]
+        else:
+            names = [name.strip().lstrip("@") for name in str(x_username).split(",") if name.strip()]
+        if not names:
+            return ""
+        if len(names) == 1:
+            return f"Account: @{names[0]}\n"
+        return f"Accounts: @{', @'.join(names)}\n"

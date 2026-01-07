@@ -38,14 +38,25 @@ class TelegramService:
     ) -> str:
         topics_line = f"Topics: {', '.join(topics)}" if topics else "Topics: (none)"
         time_line = f"Time range: {time_range}" if time_range else "Time range: (n/a)"
+        account_line = self._format_account_line(x_username)
         headline_line = f"XTrack Flash: {headline}\n" if headline else ""
         return (
             f"{headline_line}"
             f"{summary}\n\n"
             "Input Details\n"
-            f"Account: @{x_username}\n"
+            f"{account_line}\n"
             f"{time_line}\n"
             f"Tweets analyzed: {tweets_count}\n"
             f"{topics_line}\n\n"
             "More: https://www.ai-productivity.tools/"
         )
+
+    def _format_account_line(self, x_username: Optional[str]) -> str:
+        if not x_username:
+            return "Account: (unknown)"
+        names = [name.strip().lstrip("@") for name in str(x_username).split(",") if name.strip()]
+        if not names:
+            return "Account: (unknown)"
+        if len(names) == 1:
+            return f"Account: @{names[0]}"
+        return f"Accounts: @{', @'.join(names)}"

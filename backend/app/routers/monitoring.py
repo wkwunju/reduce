@@ -24,6 +24,17 @@ class SendEmailRequest(BaseModel):
     email: str
     summary_id: Optional[str] = None  # If provided, send specific summary
 
+def _parse_usernames(raw: str) -> List[str]:
+    if not raw:
+        return []
+    names = str(raw).split(",")
+    cleaned = []
+    for name in names:
+        cleaned_name = name.strip().lstrip("@")
+        if cleaned_name and cleaned_name not in cleaned:
+            cleaned.append(cleaned_name)
+    return cleaned
+
 @router.post("/test")
 def test_monitoring(
     test_request: TestRequest,
@@ -32,7 +43,10 @@ def test_monitoring(
     """Test function to execute monitoring immediately with a time range"""
     print("\n" + "=" * 80)
     print("[API ENDPOINT] /api/monitoring/test - Starting test")
-    print(f"[API ENDPOINT] Request data: username={test_request.x_username}, hours_back={test_request.hours_back}, topics={test_request.topics}, language={test_request.language}")
+    usernames = _parse_usernames(test_request.x_username)
+    if not usernames:
+        raise HTTPException(status_code=400, detail="No X usernames provided")
+    print(f"[API ENDPOINT] Request data: usernames={usernames}, hours_back={test_request.hours_back}, topics={test_request.topics}, language={test_request.language}")
     print("=" * 80)
     
     try:
@@ -48,11 +62,17 @@ def test_monitoring(
         
         # Fetch tweets (this may take time due to rate limiting)
         print("[API ENDPOINT] Step 1: Fetching tweets from Twitter API...")
-        tweets = twitter_service.get_user_tweets(
-            username=test_request.x_username,
-            since=since_time,
-            limit=50
-        )
+        tweets = []
+        for username in usernames:
+            account_tweets = twitter_service.get_user_tweets(
+                username=username,
+                since=since_time,
+                limit=50
+            )
+            for tweet in account_tweets:
+                if not tweet.get("username"):
+                    tweet["username"] = username
+            tweets.extend(account_tweets)
         print(f"[API ENDPOINT] ✅ Step 1 complete: Fetched {len(tweets)} tweets")
         
         # Note: We don't filter by topics - instead we pass topics to LLM to focus on them
@@ -68,7 +88,7 @@ def test_monitoring(
         summary_result = llm_service.summarize_tweets(
             tweets,
             test_request.topics,
-            x_username=test_request.x_username,
+            x_username=", ".join(usernames),
             time_range=time_range,
             language=test_request.language
         )
@@ -83,7 +103,7 @@ def test_monitoring(
             email_service = SendGridService()
             email_sent = email_service.send_summary_email(
                 to_email=test_request.email,
-                x_username=test_request.x_username,
+                x_username=", ".join(usernames),
                 summary=summary_text,
                 tweets_count=len(tweets),
                 topics=test_request.topics,
@@ -96,7 +116,7 @@ def test_monitoring(
         
         storage = DatabaseStorage(db)
         playground_summary = storage.add_playground_summary(
-            x_username=test_request.x_username,
+            x_username=", ".join(usernames),
             topics=test_request.topics or [],
             hours_back=test_request.hours_back or 24,
             content=summary_text,
@@ -106,7 +126,7 @@ def test_monitoring(
         )
 
         result = {
-            "x_username": test_request.x_username,
+            "x_username": ", ".join(usernames),
             "topics": test_request.topics,
             "hours_back": test_request.hours_back,
             "language": test_request.language,

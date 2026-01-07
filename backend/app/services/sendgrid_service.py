@@ -98,6 +98,7 @@ class SendGridService:
         """
         # Create email body
         topics_text = f"\nTopics of interest: {', '.join(topics)}\n" if topics else ""
+        account_line = self._format_account_line(x_username)
         
         text_content = f"""XTRACT FLASH
 
@@ -105,7 +106,7 @@ Summary:
 {summary}
 
 Input Details:
-Account: @{x_username}
+{account_line}
 Tweets analyzed: {tweets_count}
 {topics_text}
 ---
@@ -136,7 +137,7 @@ More: https://www.ai-productivity.tools/
         <div style="padding: 0 30px 30px 30px;">
             <h3 style="color: #1a1a1a; font-size: 14px; margin: 0 0 10px 0; font-weight: 600;">Input Details</h3>
             <div style="background-color: #f9f9f9; padding: 14px; border-radius: 6px; font-size: 13px;">
-                <p style="margin: 0 0 8px 0;"><strong>Account:</strong> @{x_username}</p>
+                <p style="margin: 0 0 8px 0;"><strong>{'Accounts' if ',' in str(x_username) else 'Account'}:</strong> {self._format_account_list(x_username)}</p>
                 <p style="margin: 0 0 8px 0;"><strong>Tweets analyzed:</strong> {tweets_count}</p>
                 {f'<p style="margin: 0;"><strong>Topics of interest:</strong> {", ".join(topics)}</p>' if topics else ''}
             </div>
@@ -149,7 +150,19 @@ More: https://www.ai-productivity.tools/
 </body>
 </html>"""
         
-        subject_text = headline or f"@{x_username} summary"
+        subject_text = headline or f"{self._format_account_list(x_username)} summary"
         subject = f"XTrack Flash: {subject_text}"
         
         return self.send_email(to_email, subject, text_content, html_content)
+
+    def _format_account_list(self, x_username: Optional[str]) -> str:
+        if not x_username:
+            return "(unknown)"
+        names = [name.strip().lstrip("@") for name in str(x_username).split(",") if name.strip()]
+        if not names:
+            return "(unknown)"
+        return ", ".join(f"@{name}" for name in names)
+
+    def _format_account_line(self, x_username: Optional[str]) -> str:
+        label = "Accounts" if "," in str(x_username) else "Account"
+        return f"{label}: {self._format_account_list(x_username)}"

@@ -153,6 +153,8 @@ class TwitterService:
                             print(f"[TWITTER API] Sample tweet {idx + 1} keys: {list(tweet.keys()) if isinstance(tweet, dict) else 'Not a dict'}")
                         parsed_tweet = self._parse_tweet(tweet)
                         if parsed_tweet:
+                            if not parsed_tweet.get("username"):
+                                parsed_tweet["username"] = username
                             all_tweets.append(parsed_tweet)
                             parsed_count += 1
                             if len(all_tweets) >= max_tweets:
@@ -273,4 +275,3 @@ class TwitterService:
                 filtered.append(tweet)
         
         return filtered
-
